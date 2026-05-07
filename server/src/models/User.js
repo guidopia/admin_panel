@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema(
     email: { type: String, trim: true, lowercase: true },
     password: { type: String, default: '' },
     isPremium: { type: Boolean, default: false, index: true },
+    // Canonical premium flag for the main platform (`prodigy-ai`) is `hasPlatformAccess`.
+    // Keep it on this shared `users` collection so the admin panel can control access platform-wide.
+    hasPlatformAccess: { type: Boolean, default: false, index: true },
     role: {
       type: String,
       enum: ['user', 'admin'],

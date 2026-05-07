@@ -37,13 +37,16 @@ export const listUsers = asyncHandler(async (req, res) => {
       { email: { $regex: s, $options: 'i' } },
     ];
   }
-  if (premium !== 'all') filter.isPremium = premium === 'true';
+  // Canonical premium flag for the main platform is `hasPlatformAccess`.
+  // Keep `isPremium` in sync on writes, but filter by `hasPlatformAccess` so admin actions
+  // immediately affect the user-facing app (`prodigy-ai`).
+  if (premium !== 'all') filter.hasPlatformAccess = premium === 'true';
   if (role !== 'all') filter.role = role;
 
   const [total, docs] = await Promise.all([
     User.countDocuments(filter),
     User.find(filter)
-      .select('_id name email isPremium role createdAt')
+      .select('_id name email isPremium hasPlatformAccess role createdAt')
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -52,11 +55,14 @@ export const listUsers = asyncHandler(async (req, res) => {
 
   const users = docs.map((u) => {
     const createdAt = u.createdAt || objectIdTimestamp(u._id) || null;
+    const hasPlatformAccess = Boolean(u.hasPlatformAccess);
     return {
       id: String(u._id),
       name: u.name || '',
       email: u.email || '',
-      isPremium: Boolean(u.isPremium),
+      // Expose as `isPremium` to keep the existing admin UI unchanged,
+      // but back it by the platform access flag.
+      isPremium: hasPlatformAccess,
       role: u.role || 'user',
       createdAt,
     };
@@ -82,11 +88,12 @@ export const setUserPremium = asyncHandler(async (req, res) => {
   const parsed = premiumBodySchema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'Invalid input', parsed.error.flatten());
 
+  const next = parsed.data.isPremium;
   const user = await User.findByIdAndUpdate(
     id,
-    { $set: { isPremium: parsed.data.isPremium } },
+    { $set: { isPremium: next, hasPlatformAccess: next } },
     { new: true, runValidators: true }
-  ).select('_id name email isPremium role createdAt');
+  ).select('_id name email isPremium hasPlatformAccess role createdAt');
 
   if (!user) throw new ApiError(404, 'User not found');
 
@@ -95,7 +102,7 @@ export const setUserPremium = asyncHandler(async (req, res) => {
       id: String(user._id),
       name: user.name || '',
       email: user.email || '',
-      isPremium: Boolean(user.isPremium),
+      isPremium: Boolean(user.hasPlatformAccess),
       role: user.role || 'user',
       createdAt: user.createdAt || objectIdTimestamp(user._id) || null,
     },
@@ -115,15 +122,16 @@ export const bulkSetPremium = asyncHandler(async (req, res) => {
   const validIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
   if (validIds.length !== ids.length) throw new ApiError(400, 'One or more userIds are invalid');
 
+  const next = parsed.data.isPremium;
   const result = await User.updateMany(
     { _id: { $in: validIds } },
-    { $set: { isPremium: parsed.data.isPremium } }
+    { $set: { isPremium: next, hasPlatformAccess: next } }
   );
 
   res.json({
     matched: result.matchedCount ?? result.n ?? 0,
     modified: result.modifiedCount ?? result.nModified ?? 0,
-    isPremium: parsed.data.isPremium,
+    isPremium: next,
   });
 });
 
