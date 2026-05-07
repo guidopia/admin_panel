@@ -3,9 +3,10 @@ import toast from 'react-hot-toast';
 
 import { api } from '../lib/api.js';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
-import { FiltersBar } from '../ui/users/FiltersBar.jsx';
+import { UsersToolbar } from '../ui/users/UsersToolbar.jsx';
 import { UsersTable } from '../ui/users/UsersTable.jsx';
 import { Pagination } from '../ui/users/Pagination.jsx';
+import { BulkActionBar } from '../ui/users/BulkActionBar.jsx';
 
 function toISODateString(d) {
   if (!d) return '';
@@ -109,6 +110,10 @@ export function UsersPage() {
     });
   }, []);
 
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
   const setUserPremiumOptimistic = useCallback(async (id, nextPremium) => {
     // Optimistic UI update
     setData((prev) => ({
@@ -171,14 +176,36 @@ export function UsersPage() {
     [data.users]
   );
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <div className="text-lg font-semibold">Users Management</div>
-        <div className="text-sm text-slate-600">Manage premium access for real users from MongoDB Atlas.</div>
-      </div>
+  const hasActiveFilters = useMemo(
+    () => Boolean(debouncedQuery?.trim()) || premium !== 'all' || role !== 'all',
+    [debouncedQuery, premium, role]
+  );
 
-      <FiltersBar
+  const clearFilters = useCallback(() => {
+    setQuery('');
+    setPremium('all');
+    setRole('all');
+  }, []);
+
+  return (
+    <div className="space-y-5 pb-24">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">
+              Users
+            </h1>
+            <span className="chip-outline tabular-nums">
+              {data.total.toLocaleString()}
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] text-neutral-500">
+            Manage premium access for real users from MongoDB Atlas.
+          </p>
+        </div>
+      </header>
+
+      <UsersToolbar
         query={query}
         onQueryChange={setQuery}
         premium={premium}
@@ -187,18 +214,16 @@ export function UsersPage() {
         onRoleChange={setRole}
         limit={limit}
         onLimitChange={setLimit}
-        selectedCount={selectedCount}
-        onBulkGrant={() => bulkSetPremiumOptimistic(true)}
-        onBulkRemove={() => bulkSetPremiumOptimistic(false)}
         loading={loading}
       />
 
       {error ? (
-        <div className="rounded-xl border bg-white p-4 text-sm text-red-700">
-          <div className="font-semibold">Couldn’t load users</div>
-          <div className="mt-1 text-red-600">{error}</div>
+        <div className="surface p-4 text-[13px]">
+          <div className="font-semibold text-neutral-900">Couldn’t load users</div>
+          <div className="mt-1 text-neutral-500">{error}</div>
           <button
-            className="mt-3 rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50"
+            type="button"
+            className="btn-ghost mt-3 h-8 px-2.5 text-[12px]"
             onClick={fetchUsers}
           >
             Retry
@@ -214,6 +239,8 @@ export function UsersPage() {
           onToggleSelectAll={toggleSelectAllOnPage}
           onToggleSelectOne={toggleSelectOne}
           onTogglePremium={setUserPremiumOptimistic}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
         />
       )}
 
@@ -224,7 +251,14 @@ export function UsersPage() {
         limit={data.limit}
         onPageChange={setPage}
       />
+
+      <BulkActionBar
+        selectedCount={selectedCount}
+        onBulkGrant={() => bulkSetPremiumOptimistic(true)}
+        onBulkRemove={() => bulkSetPremiumOptimistic(false)}
+        onClear={clearSelection}
+        loading={loading}
+      />
     </div>
   );
 }
-

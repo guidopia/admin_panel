@@ -37,47 +37,72 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-full grid place-items-center p-4">
-      <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <div className="text-xl font-semibold">Admin Sign in</div>
-          <div className="text-sm text-slate-600">Use an existing admin user from MongoDB Atlas.</div>
+    <div className="grid min-h-full place-items-center bg-neutral-50 p-4">
+      <div className="w-full max-w-[380px]">
+        <div className="mb-6 flex items-center justify-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-900 text-sm font-bold text-white">
+            G
+          </div>
+          <div className="leading-tight">
+            <div className="text-[15px] font-semibold text-neutral-900">Guidopia</div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-neutral-400">
+              Admin
+            </div>
+          </div>
         </div>
 
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Email</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Password</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              autoComplete="current-password"
-              required
-            />
+        <div className="surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <div className="mb-5">
+            <div className="text-[15px] font-semibold text-neutral-900">Sign in to your workspace</div>
+            <div className="mt-0.5 text-[12.5px] text-neutral-500">
+              Use your admin credentials to continue.
+            </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+          <form className="space-y-3.5" onSubmit={onSubmit}>
+            <div>
+              <label className="mb-1 block text-[12px] font-medium text-neutral-700">
+                Email
+              </label>
+              <input
+                className="input h-9"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                autoComplete="email"
+                placeholder="you@company.com"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[12px] font-medium text-neutral-700">
+                Password
+              </label>
+              <input
+                className="input h-9"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary mt-1 h-9 w-full justify-center text-[13px]"
+            >
+              {loading ? 'Signing in…' : 'Continue'}
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-4 text-center text-[11.5px] text-neutral-400">
+          Protected admin area · MongoDB Atlas
+        </div>
       </div>
     </div>
   );
 }
-
