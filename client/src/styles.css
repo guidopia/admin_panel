@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Small defaults for a clean admin look */
+html,
+body,
+#root {
+  height: 100%;
+}
+
