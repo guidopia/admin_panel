@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true, default: '' },
-    email: { type: String, trim: true, lowercase: true, index: true },
+    email: { type: String, trim: true, lowercase: true },
     password: { type: String, default: '' },
     isPremium: { type: Boolean, default: false, index: true },
     role: {

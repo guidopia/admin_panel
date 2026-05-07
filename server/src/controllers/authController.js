@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
 import { User } from '../models/User.js';
-import { env } from '../config/env.js';
+import { getEnv } from '../config/env.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -28,6 +28,7 @@ export const login = asyncHandler(async (req, res) => {
   const ok = hash ? await bcrypt.compare(password, hash) : false;
   if (!ok) throw new ApiError(401, 'Invalid email or password');
 
+  const env = getEnv();
   if (!env.jwtSecret) throw new ApiError(500, 'Missing JWT_SECRET');
 
   const token = jwt.sign(

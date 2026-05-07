@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
+import { getEnv } from '../config/env.js';
 import { ApiError } from '../utils/apiError.js';
 import { User } from '../models/User.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -14,6 +14,7 @@ function getBearerToken(req) {
 export const requireAuth = asyncHandler(async (req, _res, next) => {
   const token = getBearerToken(req);
   if (!token) throw new ApiError(401, 'Unauthorized');
+  const env = getEnv();
   if (!env.jwtSecret) throw new ApiError(500, 'Missing JWT_SECRET');
 
   let decoded;
