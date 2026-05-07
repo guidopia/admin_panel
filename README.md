@@ -49,3 +49,4 @@ Open `http://localhost:5173`.
 - User schema is backward-compatible (missing fields default safely).
 
 "# admin_panel" 
+# admin_panel
