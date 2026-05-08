@@ -20,7 +20,6 @@ export function UsersPage() {
   const debouncedQuery = useDebouncedValue(query, 300);
 
   const [premium, setPremium] = useState('all'); // all|true|false
-  const [role, setRole] = useState('all'); // all|admin|user
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -37,16 +36,15 @@ export function UsersPage() {
     () => ({
       q: debouncedQuery?.trim() ? debouncedQuery.trim() : undefined,
       premium,
-      role,
       page,
       limit,
     }),
-    [debouncedQuery, premium, role, page, limit]
+    [debouncedQuery, premium, page, limit]
   );
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQuery, premium, role, limit]);
+  }, [debouncedQuery, premium, limit]);
 
   const fetchUsers = useCallback(async () => {
     const requestId = ++lastRequestId.current;
@@ -177,14 +175,13 @@ export function UsersPage() {
   );
 
   const hasActiveFilters = useMemo(
-    () => Boolean(debouncedQuery?.trim()) || premium !== 'all' || role !== 'all',
-    [debouncedQuery, premium, role]
+    () => Boolean(debouncedQuery?.trim()) || premium !== 'all',
+    [debouncedQuery, premium]
   );
 
   const clearFilters = useCallback(() => {
     setQuery('');
     setPremium('all');
-    setRole('all');
   }, []);
 
   return (
@@ -210,8 +207,6 @@ export function UsersPage() {
         onQueryChange={setQuery}
         premium={premium}
         onPremiumChange={setPremium}
-        role={role}
-        onRoleChange={setRole}
         limit={limit}
         onLimitChange={setLimit}
         loading={loading}

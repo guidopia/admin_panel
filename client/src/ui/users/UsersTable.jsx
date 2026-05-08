@@ -50,22 +50,6 @@ function Avatar({ name, email }) {
   );
 }
 
-function RoleChip({ role }) {
-  const isAdmin = role === 'admin';
-  return (
-    <span className={isAdmin ? 'chip-solid' : 'chip-outline'}>
-      <span
-        aria-hidden
-        className={[
-          'mr-1 inline-block h-1.5 w-1.5 rounded-full',
-          isAdmin ? 'bg-white' : 'bg-neutral-400',
-        ].join(' ')}
-      />
-      {isAdmin ? 'Admin' : 'User'}
-    </span>
-  );
-}
-
 function PremiumChip({ isPremium }) {
   return (
     <span className={isPremium ? 'chip-solid' : 'chip-muted'}>
@@ -274,7 +258,6 @@ function UsersTableImpl({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <RoleChip role={u.role || 'user'} />
                         <PremiumChip isPremium={Boolean(u.isPremium)} />
                       </div>
                     </td>

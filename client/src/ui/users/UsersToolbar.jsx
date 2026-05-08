@@ -64,12 +64,6 @@ const PREMIUM_OPTIONS = [
   { value: 'false', label: 'Free' },
 ];
 
-const ROLE_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'user', label: 'User' },
-];
-
 const LIMIT_OPTIONS = [10, 20, 50, 100];
 
 export function UsersToolbar({
@@ -77,8 +71,6 @@ export function UsersToolbar({
   onQueryChange,
   premium,
   onPremiumChange,
-  role,
-  onRoleChange,
   limit,
   onLimitChange,
   loading,
@@ -121,32 +113,12 @@ export function UsersToolbar({
             />
           </div>
 
-          <div className="hidden items-center gap-1.5 sm:flex">
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-400">
-              Role
-            </span>
-            <Segmented
-              ariaLabel="Filter by role"
-              value={role}
-              onChange={onRoleChange}
-              options={ROLE_OPTIONS}
-            />
-          </div>
-
           <div className="sm:hidden">
             <Segmented
               ariaLabel="Filter by premium"
               value={premium}
               onChange={onPremiumChange}
               options={PREMIUM_OPTIONS}
-            />
-          </div>
-          <div className="sm:hidden">
-            <Segmented
-              ariaLabel="Filter by role"
-              value={role}
-              onChange={onRoleChange}
-              options={ROLE_OPTIONS}
             />
           </div>
 

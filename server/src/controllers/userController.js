@@ -24,11 +24,15 @@ export const listUsers = asyncHandler(async (req, res) => {
   const parsed = listUsersQuerySchema.safeParse(req.query);
   if (!parsed.success) throw new ApiError(400, 'Invalid query', parsed.error.flatten());
 
-  const { q, premium = 'all', role = 'all' } = parsed.data;
+  const { q, premium = 'all' } = parsed.data;
   const page = parsed.data.page ?? 1;
   const limit = parsed.data.limit ?? 20;
 
   const filter = {};
+
+  // Never show admin accounts in the Users table.
+  // Admins are managed separately and should not be impacted by bulk premium actions.
+  filter.role = { $ne: 'admin' };
 
   if (q?.trim()) {
     const s = q.trim();
@@ -41,7 +45,6 @@ export const listUsers = asyncHandler(async (req, res) => {
   // Keep `isPremium` in sync on writes, but filter by `hasPlatformAccess` so admin actions
   // immediately affect the user-facing app (`prodigy-ai`).
   if (premium !== 'all') filter.hasPlatformAccess = premium === 'true';
-  if (role !== 'all') filter.role = role;
 
   const [total, docs] = await Promise.all([
     User.countDocuments(filter),
