@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../../lib/api.js';
+import { downloadExport } from '../../lib/downloadExport.js';
 import {
   formatFieldValue,
   getOnboardingSectionsForStudentType,
@@ -96,6 +98,7 @@ export function UserDetailDrawer({ userId, open, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(null);
 
   const fetchDetail = useCallback(async () => {
     if (!userId) return;
@@ -144,6 +147,26 @@ export function UserDetailDrawer({ userId, open, onClose }) {
   const onboarding = data?.onboarding;
   const futureMeCard = data?.futureMeCard;
   const onboardingComplete = Boolean(user?.onboardingComplete);
+
+  const handleExport = useCallback(
+    async (format) => {
+      if (!userId) return;
+      setExporting(format);
+      try {
+        const base = (data?.user?.email || data?.user?.name || 'user').replace(/@.*/, '');
+        await downloadExport(
+          `/api/users/${userId}/export?format=${format}`,
+          `${base}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+        );
+        toast.success(format === 'pdf' ? 'PDF downloaded' : 'Excel downloaded');
+      } catch (err) {
+        toast.error(err?.message || 'Export failed');
+      } finally {
+        setExporting(null);
+      }
+    },
+    [userId, data?.user?.email, data?.user?.name]
+  );
 
   const hasOnboarding = useMemo(() => {
     if (!onboarding) return false;
@@ -201,14 +224,34 @@ export function UserDetailDrawer({ userId, open, onClose }) {
             </h2>
             <p className="truncate font-mono text-[12px] text-neutral-500">{user?.email || '—'}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-quiet shrink-0 p-2"
-            aria-label="Close panel"
-          >
-            <CloseIcon />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              disabled={!userId || Boolean(exporting)}
+              onClick={() => handleExport('xlsx')}
+              className="btn-ghost h-8 px-2 text-[11px]"
+              title="Download Excel"
+            >
+              {exporting === 'xlsx' ? '…' : 'Excel'}
+            </button>
+            <button
+              type="button"
+              disabled={!userId || Boolean(exporting)}
+              onClick={() => handleExport('pdf')}
+              className="btn-ghost h-8 px-2 text-[11px]"
+              title="Download PDF"
+            >
+              {exporting === 'pdf' ? '…' : 'PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-quiet p-2"
+              aria-label="Close panel"
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </header>
 
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">

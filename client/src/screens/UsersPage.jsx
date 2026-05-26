@@ -8,6 +8,7 @@ import { UsersTable } from '../ui/users/UsersTable.jsx';
 import { Pagination } from '../ui/users/Pagination.jsx';
 import { BulkActionBar } from '../ui/users/BulkActionBar.jsx';
 import { UserDetailDrawer } from '../ui/users/UserDetailDrawer.jsx';
+import { downloadExport } from '../lib/downloadExport.js';
 
 function toISODateString(d) {
   if (!d) return '';
@@ -197,6 +198,24 @@ export function UsersPage() {
     setDetailUserId(null);
   }, []);
 
+  const [exportingAll, setExportingAll] = useState(false);
+
+  const handleExportAll = useCallback(async () => {
+    setExportingAll(true);
+    try {
+      const stamp = new Date().toISOString().slice(0, 10);
+      await downloadExport(
+        '/api/users/export/all?format=xlsx',
+        `guidopia-all-users-${stamp}.xlsx`
+      );
+      toast.success('All users exported to Excel');
+    } catch (err) {
+      toast.error(err?.message || 'Export failed');
+    } finally {
+      setExportingAll(false);
+    }
+  }, []);
+
   return (
     <div className="space-y-5 pb-24">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -212,6 +231,17 @@ export function UsersPage() {
           <p className="mt-1 text-[13px] text-neutral-500">
             Manage premium access for real users from MongoDB Atlas.
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary h-9 px-3 text-[12px]"
+            disabled={exportingAll || loading}
+            onClick={handleExportAll}
+            title="Download all users with full profile & onboarding data"
+          >
+            {exportingAll ? 'Exporting…' : 'Export all (Excel)'}
+          </button>
         </div>
       </header>
 
