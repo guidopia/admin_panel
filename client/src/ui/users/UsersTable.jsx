@@ -149,6 +149,7 @@ function UsersTableImpl({
   onToggleSelectAll,
   onToggleSelectOne,
   onTogglePremium,
+  onViewUser,
   onClearFilters,
   hasActiveFilters,
 }) {
@@ -182,7 +183,7 @@ function UsersTableImpl({
               <th scope="col" className="px-4 py-2.5">User</th>
               <th scope="col" className="px-4 py-2.5">Joined</th>
               <th scope="col" className="px-4 py-2.5">Status</th>
-              <th scope="col" className="px-4 py-2.5 text-right">Premium</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
 
@@ -235,10 +236,14 @@ function UsersTableImpl({
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => onViewUser?.(u)}
+                        className="flex w-full min-w-0 items-center gap-3 rounded-lg text-left transition hover:bg-neutral-100/80 -mx-1 px-1 py-0.5"
+                      >
                         <Avatar name={u.name} email={u.email} />
                         <div className="min-w-0">
-                          <div className="truncate text-[13px] font-medium text-neutral-900">
+                          <div className="truncate text-[13px] font-medium text-neutral-900 group-hover:underline">
                             {u.name || '—'}
                           </div>
                           <div
@@ -248,7 +253,7 @@ function UsersTableImpl({
                             {u.email || '—'}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     </td>
                     <td
                       className="px-4 py-3 text-[12.5px] text-neutral-600"
@@ -262,7 +267,14 @@ function UsersTableImpl({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="inline-flex items-center justify-end">
+                      <div className="inline-flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          className="btn-ghost h-8 px-2.5 text-[12px]"
+                          onClick={() => onViewUser?.(u)}
+                        >
+                          View
+                        </button>
                         <ToggleSwitch
                           checked={Boolean(u.isPremium)}
                           onChange={(nextVal) => handlePremiumChange(u.id, nextVal)}

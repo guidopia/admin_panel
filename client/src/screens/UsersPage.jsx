@@ -7,6 +7,7 @@ import { UsersToolbar } from '../ui/users/UsersToolbar.jsx';
 import { UsersTable } from '../ui/users/UsersTable.jsx';
 import { Pagination } from '../ui/users/Pagination.jsx';
 import { BulkActionBar } from '../ui/users/BulkActionBar.jsx';
+import { UserDetailDrawer } from '../ui/users/UserDetailDrawer.jsx';
 
 function toISODateString(d) {
   if (!d) return '';
@@ -29,6 +30,9 @@ export function UsersPage() {
 
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const selectedCount = selectedIds.size;
+
+  const [detailUserId, setDetailUserId] = useState(null);
+  const detailOpen = Boolean(detailUserId);
 
   const lastRequestId = useRef(0);
 
@@ -184,6 +188,15 @@ export function UsersPage() {
     setPremium('all');
   }, []);
 
+  const openUserDetail = useCallback((user) => {
+    if (!user?.id) return;
+    setDetailUserId(user.id);
+  }, []);
+
+  const closeUserDetail = useCallback(() => {
+    setDetailUserId(null);
+  }, []);
+
   return (
     <div className="space-y-5 pb-24">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -234,6 +247,7 @@ export function UsersPage() {
           onToggleSelectAll={toggleSelectAllOnPage}
           onToggleSelectOne={toggleSelectOne}
           onTogglePremium={setUserPremiumOptimistic}
+          onViewUser={openUserDetail}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
         />
@@ -254,6 +268,8 @@ export function UsersPage() {
         onClear={clearSelection}
         loading={loading}
       />
+
+      <UserDetailDrawer userId={detailUserId} open={detailOpen} onClose={closeUserDetail} />
     </div>
   );
 }

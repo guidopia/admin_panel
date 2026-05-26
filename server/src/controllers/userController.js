@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { User } from '../models/User.js';
+import { Onboarding } from '../models/Onboarding.js';
+import { FutureMeCard } from '../models/FutureMeCard.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -82,6 +84,168 @@ export const listUsers = asyncHandler(async (req, res) => {
 
 const premiumBodySchema = z.object({
   isPremium: z.boolean(),
+});
+
+function serializeOnboarding(doc) {
+  if (!doc) return null;
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+  return {
+    id: String(o._id),
+    phoneNumber: o.phoneNumber || '',
+    studentType: o.studentType || '',
+    schoolClass: o.schoolClass || '',
+    schoolStream: o.schoolStream || '',
+    strongestAreas: o.strongestAreas || [],
+    learningFormats: o.learningFormats || [],
+    motivation: o.motivation || '',
+    futureExcitement: o.futureExcitement || '',
+    collegeYear: o.collegeYear || '',
+    collegeDegree: o.collegeDegree || '',
+    otherDegree: o.otherDegree || '',
+    strengths: o.strengths || [],
+    careerGoals: o.careerGoals || [],
+    industries: o.industries || [],
+    lifestyle: o.lifestyle || '',
+    learningPreference: o.learningPreference || [],
+    joiningReason: o.joiningReason || '',
+    otherReason: o.otherReason || '',
+    completedAt: o.completedAt || null,
+  };
+}
+
+function serializeOnboardingAnswers(mapLike) {
+  if (!mapLike) return null;
+  if (mapLike instanceof Map) {
+    const obj = {};
+    for (const [k, v] of mapLike.entries()) obj[String(k)] = v;
+    return obj;
+  }
+  if (typeof mapLike === 'object') return { ...mapLike };
+  return null;
+}
+
+function serializeFutureMeCard(doc) {
+  if (!doc) return null;
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+  return {
+    id: String(o._id),
+    futureRole: o.futureRole || '',
+    tagline: o.tagline || '',
+    tags: o.tags || [],
+    mindset: o.mindset || '',
+    salary: o.salary || '',
+    keySkills: o.keySkills || [],
+    mentors: o.mentors || [],
+    cta: o.cta || '',
+    personalityType: o.personalityType || '',
+    careerRecommendations: o.careerRecommendations || [],
+    skillRecommendations: o.skillRecommendations || [],
+    createdAt: o.createdAt || null,
+  };
+}
+
+function serializeUserProfile(user, onboarding) {
+  const scores = user.personalityScores || {};
+  const createdAt = user.createdAt || objectIdTimestamp(user._id) || null;
+
+  return {
+    id: String(user._id),
+    name: user.name || '',
+    email: user.email || '',
+    phone: user.phone || onboarding?.phoneNumber || '',
+    age: user.age ?? null,
+    gender: user.gender || '',
+    about: user.about || '',
+    profilePic: user.profilePic || '',
+    isPremium: Boolean(user.hasPlatformAccess),
+    onboardingComplete: Boolean(user.onboardingComplete),
+    purchasedCourses: Array.isArray(user.purchasedCourses) ? user.purchasedCourses : [],
+    createdAt,
+    lastLogin: user.lastLogin || null,
+    socialLinks: (user.socialLinks || []).map((link) => ({
+      platform: link?.platform || '',
+      url: link?.url || '',
+    })),
+    experience: (user.experience || []).map((exp) => ({
+      title: exp?.title || '',
+      company: exp?.company || '',
+      description: exp?.description || '',
+      startDate: exp?.startDate || '',
+      endDate: exp?.endDate || '',
+      current: Boolean(exp?.current),
+    })),
+    skillsInProgress: (user.skillsInProgress || []).map((s) => ({
+      name: s?.name || '',
+      progress: typeof s?.progress === 'number' ? s.progress : null,
+    })),
+    completionCertificates: (user.completionCertificates || []).map((c) => ({
+      name: c?.name || '',
+      organization: c?.organization || '',
+    })),
+    personalityType: user.personalityType || '',
+    personalityScores: {
+      openness: scores.openness ?? 0,
+      conscientiousness: scores.conscientiousness ?? 0,
+      extraversion: scores.extraversion ?? 0,
+      agreeableness: scores.agreeableness ?? 0,
+      neuroticism: scores.neuroticism ?? 0,
+    },
+    careerRecommendations: user.careerRecommendations || [],
+    skillRecommendations: user.skillRecommendations || [],
+    activityLog: (user.activityLog || [])
+      .slice()
+      .sort((a, b) => new Date(b?.timestamp || 0) - new Date(a?.timestamp || 0))
+      .slice(0, 25)
+      .map((entry) => ({
+        message: entry?.message || '',
+        timestamp: entry?.timestamp || null,
+      })),
+  };
+}
+
+export const getUserDetail = asyncHandler(async (req, res) => {
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new ApiError(400, 'Invalid user id');
+
+  const user = await User.findById(id).lean();
+  if (!user) throw new ApiError(404, 'User not found');
+  if ((user.role || 'user') === 'admin') throw new ApiError(404, 'User not found');
+
+  const userObjectId = new mongoose.Types.ObjectId(String(user._id));
+
+  let onboarding = null;
+  if (user.onboarding) {
+    onboarding = await Onboarding.findById(user.onboarding).lean();
+  }
+  if (!onboarding) {
+    onboarding = await Onboarding.findOne({ user: userObjectId })
+      .sort({ completedAt: -1, _id: -1 })
+      .lean();
+  }
+  // Fallback: raw collection read (same DB as prodigy-ai `onboardings`)
+  if (!onboarding) {
+    const raw = await mongoose.connection.db
+      .collection('onboardings')
+      .findOne({ user: userObjectId }, { sort: { completedAt: -1, _id: -1 } });
+    if (raw) onboarding = raw;
+  }
+
+  let futureMeCard = null;
+  if (user.futureMeCard) {
+    futureMeCard = await FutureMeCard.findById(user.futureMeCard).lean();
+  }
+  if (!futureMeCard) {
+    futureMeCard = await FutureMeCard.findOne({ user: userObjectId })
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
+  }
+
+  res.json({
+    user: serializeUserProfile(user, onboarding),
+    onboarding: serializeOnboarding(onboarding),
+    onboardingAnswers: serializeOnboardingAnswers(user.onboardingAnswers),
+    futureMeCard: serializeFutureMeCard(futureMeCard),
+  });
 });
 
 export const setUserPremium = asyncHandler(async (req, res) => {
