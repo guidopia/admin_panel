@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
-import { User } from '../models/User.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { fetchAllUserBundles, fetchUserBundleById } from '../services/userDataService.js';
@@ -33,12 +32,9 @@ export const listUsers = asyncHandler(async (req, res) => {
   const { q, premium = 'all' } = parsed.data;
   const page = parsed.data.page ?? 1;
   const limit = parsed.data.limit ?? 20;
+  const { User } = req.models;
 
-  const filter = {};
-
-  // Never show admin accounts in the Users table.
-  // Admins are managed separately and should not be impacted by bulk premium actions.
-  filter.role = { $ne: 'admin' };
+  const filter = { role: { $ne: 'admin' } };
 
   if (q?.trim()) {
     const s = q.trim();
@@ -47,9 +43,6 @@ export const listUsers = asyncHandler(async (req, res) => {
       { email: { $regex: s, $options: 'i' } },
     ];
   }
-  // Canonical premium flag for the main platform is `hasPlatformAccess`.
-  // Keep `isPremium` in sync on writes, but filter by `hasPlatformAccess` so admin actions
-  // immediately affect the user-facing app (`prodigy-ai`).
   if (premium !== 'all') filter.hasPlatformAccess = premium === 'true';
 
   const [total, docs] = await Promise.all([
@@ -69,8 +62,6 @@ export const listUsers = asyncHandler(async (req, res) => {
       id: String(u._id),
       name: u.name || '',
       email: u.email || '',
-      // Expose as `isPremium` to keep the existing admin UI unchanged,
-      // but back it by the platform access flag.
       isPremium: hasPlatformAccess,
       role: u.role || 'user',
       createdAt,
@@ -83,6 +74,7 @@ export const listUsers = asyncHandler(async (req, res) => {
     limit,
     total,
     totalPages: Math.max(1, Math.ceil(total / limit)),
+    platform: req.platform,
   });
 });
 
@@ -91,13 +83,13 @@ const premiumBodySchema = z.object({
 });
 
 export const getUserDetail = asyncHandler(async (req, res) => {
-  const bundle = await fetchUserBundleById(req.params.id);
-  res.json(bundle);
+  const bundle = await fetchUserBundleById(req.models, req.params.id);
+  res.json({ ...bundle, platform: req.platform });
 });
 
 export const exportUserData = asyncHandler(async (req, res) => {
   const format = String(req.query.format || 'xlsx').toLowerCase();
-  const bundle = await fetchUserBundleById(req.params.id);
+  const bundle = await fetchUserBundleById(req.models, req.params.id);
   const baseName = bundle.user.email || bundle.user.name || bundle.user.id;
 
   if (format === 'pdf') {
@@ -136,10 +128,14 @@ export const exportAllUsersData = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Invalid format. Use xlsx.');
   }
 
-  const bundles = await fetchAllUserBundles();
+  const bundles = await fetchAllUserBundles(req.models);
   const buffer = await buildUsersExcel(bundles, { singleUser: false });
   const stamp = new Date().toISOString().slice(0, 10);
-  const filename = safeExportFilename(`guidopia-all-users-${stamp}-${bundles.length}`, 'xlsx');
+  const platformSlug = String(req.platform || 'users').replace(/[^a-z0-9]+/gi, '-');
+  const filename = safeExportFilename(
+    `${platformSlug}-all-users-${stamp}-${bundles.length}`,
+    'xlsx'
+  );
 
   res.setHeader(
     'Content-Type',
@@ -150,6 +146,7 @@ export const exportAllUsersData = asyncHandler(async (req, res) => {
 });
 
 export const setUserPremium = asyncHandler(async (req, res) => {
+  const { User } = req.models;
   const id = req.params.id;
   if (!mongoose.Types.ObjectId.isValid(id)) throw new ApiError(400, 'Invalid user id');
 
@@ -174,6 +171,7 @@ export const setUserPremium = asyncHandler(async (req, res) => {
       role: user.role || 'user',
       createdAt: user.createdAt || objectIdTimestamp(user._id) || null,
     },
+    platform: req.platform,
   });
 });
 
@@ -183,6 +181,7 @@ const bulkSchema = z.object({
 });
 
 export const bulkSetPremium = asyncHandler(async (req, res) => {
+  const { User } = req.models;
   const parsed = bulkSchema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'Invalid input', parsed.error.flatten());
 
@@ -200,6 +199,6 @@ export const bulkSetPremium = asyncHandler(async (req, res) => {
     matched: result.matchedCount ?? result.n ?? 0,
     modified: result.modifiedCount ?? result.nModified ?? 0,
     isPremium: next,
+    platform: req.platform,
   });
 });
-

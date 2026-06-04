@@ -5,7 +5,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-import { connectDB } from './config/db.js';
+import { connectCareerBeacon, connectDB } from './config/db.js';
+import { initCareerBeaconModels } from './db/platformModels.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -59,6 +60,18 @@ const port = Number(process.env.PORT || 5000);
 
 async function start() {
   await connectDB(process.env.MONGODB_URI);
+
+  const careerBeaconUri = (process.env.MONGODB_URI_CAREER_BEACON || '').trim();
+  if (careerBeaconUri) {
+    const careerConn = await connectCareerBeacon(careerBeaconUri);
+    initCareerBeaconModels(careerConn);
+    // eslint-disable-next-line no-console
+    console.log('Career Beacon database connected');
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn('MONGODB_URI_CAREER_BEACON not set — Career Beacon tab disabled');
+  }
+
   const server = http.createServer(app);
   server.listen(port, () => {
     // eslint-disable-next-line no-console

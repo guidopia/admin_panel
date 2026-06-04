@@ -8,10 +8,14 @@ import {
   setUserPremium,
 } from '../controllers/userController.js';
 import { requireAdmin, requireAuth } from '../middleware/authMiddleware.js';
+import { listPlatforms, platformMiddleware } from '../middleware/platformMiddleware.js';
 
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
+
+router.get('/platforms', listPlatforms);
+router.use(platformMiddleware);
 
 router.get('/', listUsers);
 router.get('/export/all', exportAllUsersData);

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const futureMeCardSchema = new mongoose.Schema(
+export const futureMeCardSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     answers: { type: mongoose.Schema.Types.Mixed },

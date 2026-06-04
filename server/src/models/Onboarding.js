@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const onboardingSchema = new mongoose.Schema(
+export const onboardingSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     phoneNumber: { type: String, default: '' },

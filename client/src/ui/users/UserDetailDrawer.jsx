@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api.js';
 import { downloadExport } from '../../lib/downloadExport.js';
+import { platformLabel, withPlatformQuery } from '../../lib/platforms.js';
 import {
   formatFieldValue,
   getOnboardingSectionsForStudentType,
@@ -94,7 +95,7 @@ function DrawerSkeleton() {
   );
 }
 
-export function UserDetailDrawer({ userId, open, onClose }) {
+export function UserDetailDrawer({ userId, platform, open, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -105,7 +106,7 @@ export function UserDetailDrawer({ userId, open, onClose }) {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get(`/api/users/${userId}`);
+      const res = await api.get(`/api/users/${userId}`, { params: { platform } });
       setData(res.data);
     } catch (err) {
       setData(null);
@@ -113,7 +114,7 @@ export function UserDetailDrawer({ userId, open, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, platform]);
 
   useEffect(() => {
     if (!open || !userId) return undefined;
@@ -155,7 +156,7 @@ export function UserDetailDrawer({ userId, open, onClose }) {
       try {
         const base = (data?.user?.email || data?.user?.name || 'user').replace(/@.*/, '');
         await downloadExport(
-          `/api/users/${userId}/export?format=${format}`,
+          withPlatformQuery(`/api/users/${userId}/export?format=${format}`, platform),
           `${base}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
         );
         toast.success(format === 'pdf' ? 'PDF downloaded' : 'Excel downloaded');
@@ -165,8 +166,10 @@ export function UserDetailDrawer({ userId, open, onClose }) {
         setExporting(null);
       }
     },
-    [userId, data?.user?.email, data?.user?.name]
+    [userId, platform, data?.user?.email, data?.user?.name]
   );
+
+  const activePlatformLabel = platformLabel(platform);
 
   const hasOnboarding = useMemo(() => {
     if (!onboarding) return false;
@@ -293,7 +296,7 @@ export function UserDetailDrawer({ userId, open, onClose }) {
                   <p className="text-sm font-medium text-neutral-900">Onboarding completed</p>
                   <p className="mt-1 text-[12px] text-neutral-500">
                     This user finished onboarding, but their answers were not found in the onboardings
-                    collection. Try refreshing, or verify the user exists in the same database as prodigy-ai.
+                    collection. Try refreshing, or verify the user exists in the {activePlatformLabel} database.
                   </p>
                 </div>
               ) : legacyAnswers.length > 0 ? (

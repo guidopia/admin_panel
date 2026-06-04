@@ -1,7 +1,4 @@
 import mongoose from 'mongoose';
-import { User } from '../models/User.js';
-import { Onboarding } from '../models/Onboarding.js';
-import { FutureMeCard } from '../models/FutureMeCard.js';
 import { ApiError } from '../utils/apiError.js';
 
 function objectIdTimestamp(id) {
@@ -130,7 +127,8 @@ export function serializeUserProfile(user, onboarding, { fullActivityLog = false
   };
 }
 
-async function loadOnboardingForUser(user) {
+async function loadOnboardingForUser(ctx, user) {
+  const { Onboarding, db } = ctx;
   const userObjectId = new mongoose.Types.ObjectId(String(user._id));
 
   let onboarding = null;
@@ -142,15 +140,16 @@ async function loadOnboardingForUser(user) {
       .sort({ completedAt: -1, _id: -1 })
       .lean();
   }
-  if (!onboarding && mongoose.connection?.db) {
-    onboarding = await mongoose.connection.db
+  if (!onboarding && db) {
+    onboarding = await db
       .collection('onboardings')
       .findOne({ user: userObjectId }, { sort: { completedAt: -1, _id: -1 } });
   }
   return onboarding;
 }
 
-async function loadFutureMeForUser(user) {
+async function loadFutureMeForUser(ctx, user) {
+  const { FutureMeCard } = ctx;
   const userObjectId = new mongoose.Types.ObjectId(String(user._id));
 
   let futureMeCard = null;
@@ -165,15 +164,16 @@ async function loadFutureMeForUser(user) {
   return futureMeCard;
 }
 
-export async function fetchUserBundleById(id) {
+export async function fetchUserBundleById(ctx, id) {
+  const { User } = ctx;
   if (!mongoose.Types.ObjectId.isValid(id)) throw new ApiError(400, 'Invalid user id');
 
   const user = await User.findById(id).lean();
   if (!user) throw new ApiError(404, 'User not found');
   if ((user.role || 'user') === 'admin') throw new ApiError(404, 'User not found');
 
-  const onboarding = await loadOnboardingForUser(user);
-  const futureMeCard = await loadFutureMeForUser(user);
+  const onboarding = await loadOnboardingForUser(ctx, user);
+  const futureMeCard = await loadFutureMeForUser(ctx, user);
 
   return {
     user: serializeUserProfile(user, onboarding, { fullActivityLog: true }),
@@ -183,7 +183,9 @@ export async function fetchUserBundleById(id) {
   };
 }
 
-export async function fetchAllUserBundles() {
+export async function fetchAllUserBundles(ctx) {
+  const { User, Onboarding, FutureMeCard } = ctx;
+
   const users = await User.find({ role: { $ne: 'admin' } })
     .sort({ createdAt: -1, _id: -1 })
     .lean();

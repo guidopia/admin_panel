@@ -2,12 +2,20 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 
 import { api } from '../lib/api.js';
+import {
+  DEFAULT_PLATFORM,
+  PLATFORMS,
+  platformLabel,
+  withPlatformParams,
+  withPlatformQuery,
+} from '../lib/platforms.js';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { UsersToolbar } from '../ui/users/UsersToolbar.jsx';
 import { UsersTable } from '../ui/users/UsersTable.jsx';
 import { Pagination } from '../ui/users/Pagination.jsx';
 import { BulkActionBar } from '../ui/users/BulkActionBar.jsx';
 import { UserDetailDrawer } from '../ui/users/UserDetailDrawer.jsx';
+import { PlatformTabs } from '../ui/users/PlatformTabs.jsx';
 import { downloadExport } from '../lib/downloadExport.js';
 
 function toISODateString(d) {
@@ -18,10 +26,15 @@ function toISODateString(d) {
 }
 
 export function UsersPage() {
+  const [platform, setPlatform] = useState(DEFAULT_PLATFORM);
+  const [platformOptions, setPlatformOptions] = useState(
+    PLATFORMS.map((p) => ({ ...p, configured: p.id === DEFAULT_PLATFORM }))
+  );
+
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 300);
 
-  const [premium, setPremium] = useState('all'); // all|true|false
+  const [premium, setPremium] = useState('all');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -37,19 +50,47 @@ export function UsersPage() {
 
   const lastRequestId = useRef(0);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/users/platforms');
+        if (cancelled) return;
+        const fromApi = res.data?.platforms;
+        if (Array.isArray(fromApi) && fromApi.length) {
+          setPlatformOptions(fromApi);
+        }
+      } catch {
+        // Keep defaults if meta endpoint fails.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const params = useMemo(
-    () => ({
-      q: debouncedQuery?.trim() ? debouncedQuery.trim() : undefined,
-      premium,
-      page,
-      limit,
-    }),
-    [debouncedQuery, premium, page, limit]
+    () =>
+      withPlatformParams(
+        {
+          q: debouncedQuery?.trim() ? debouncedQuery.trim() : undefined,
+          premium,
+          page,
+          limit,
+        },
+        platform
+      ),
+    [debouncedQuery, premium, page, limit, platform]
   );
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQuery, premium, limit]);
+  }, [debouncedQuery, premium, limit, platform]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setDetailUserId(null);
+  }, [platform]);
 
   const fetchUsers = useCallback(async () => {
     const requestId = ++lastRequestId.current;
@@ -72,7 +113,6 @@ export function UsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Keep selection stable across refetches, but drop ids that no longer exist on current page.
   useEffect(() => {
     setSelectedIds((prev) => {
       if (!prev.size) return prev;
@@ -117,25 +157,30 @@ export function UsersPage() {
     setSelectedIds(new Set());
   }, []);
 
-  const setUserPremiumOptimistic = useCallback(async (id, nextPremium) => {
-    // Optimistic UI update
-    setData((prev) => ({
-      ...prev,
-      users: prev.users.map((u) => (u.id === id ? { ...u, isPremium: nextPremium } : u)),
-    }));
-
-    try {
-      await api.patch(`/api/users/${id}/premium`, { isPremium: nextPremium });
-      toast.success(nextPremium ? 'Premium enabled' : 'Premium disabled');
-    } catch (err) {
-      // Rollback
+  const setUserPremiumOptimistic = useCallback(
+    async (id, nextPremium) => {
       setData((prev) => ({
         ...prev,
-        users: prev.users.map((u) => (u.id === id ? { ...u, isPremium: !nextPremium } : u)),
+        users: prev.users.map((u) => (u.id === id ? { ...u, isPremium: nextPremium } : u)),
       }));
-      toast.error(err?.response?.data?.message || 'Failed to update premium');
-    }
-  }, []);
+
+      try {
+        await api.patch(
+          `/api/users/${id}/premium`,
+          { isPremium: nextPremium },
+          { params: { platform } }
+        );
+        toast.success(nextPremium ? 'Premium enabled' : 'Premium disabled');
+      } catch (err) {
+        setData((prev) => ({
+          ...prev,
+          users: prev.users.map((u) => (u.id === id ? { ...u, isPremium: !nextPremium } : u)),
+        }));
+        toast.error(err?.response?.data?.message || 'Failed to update premium');
+      }
+    },
+    [platform]
+  );
 
   const bulkSetPremiumOptimistic = useCallback(
     async (nextPremium) => {
@@ -153,7 +198,11 @@ export function UsersPage() {
       });
 
       try {
-        await api.patch('/api/users/premium/bulk', { userIds: ids, isPremium: nextPremium });
+        await api.patch(
+          '/api/users/premium/bulk',
+          { userIds: ids, isPremium: nextPremium },
+          { params: { platform } }
+        );
         toast.success(nextPremium ? 'Premium granted (bulk)' : 'Premium removed (bulk)');
         setSelectedIds(new Set());
       } catch (err) {
@@ -167,7 +216,7 @@ export function UsersPage() {
         toast.error(err?.response?.data?.message || 'Bulk update failed');
       }
     },
-    [selectedIds]
+    [selectedIds, platform]
   );
 
   const users = useMemo(
@@ -204,9 +253,10 @@ export function UsersPage() {
     setExportingAll(true);
     try {
       const stamp = new Date().toISOString().slice(0, 10);
+      const slug = platform.replace(/[^a-z0-9]+/gi, '-');
       await downloadExport(
-        '/api/users/export/all?format=xlsx',
-        `guidopia-all-users-${stamp}.xlsx`
+        withPlatformQuery('/api/users/export/all?format=xlsx', platform),
+        `${slug}-all-users-${stamp}.xlsx`
       );
       toast.success('All users exported to Excel');
     } catch (err) {
@@ -214,23 +264,31 @@ export function UsersPage() {
     } finally {
       setExportingAll(false);
     }
-  }, []);
+  }, [platform]);
+
+  const activePlatformLabel = platformLabel(platform);
 
   return (
     <div className="space-y-5 pb-24">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">
-              Users
-            </h1>
-            <span className="chip-outline tabular-nums">
-              {data.total.toLocaleString()}
-            </span>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-3">
+          <PlatformTabs
+            platforms={platformOptions}
+            value={platform}
+            onChange={setPlatform}
+            disabled={loading}
+          />
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">Users</h1>
+              <span className="chip-outline tabular-nums">{data.total.toLocaleString()}</span>
+              <span className="chip-muted">{activePlatformLabel}</span>
+            </div>
+            <p className="mt-1 text-[13px] text-neutral-500">
+              Choose a database above, then manage users, premium access, and exports for that
+              product.
+            </p>
           </div>
-          <p className="mt-1 text-[13px] text-neutral-500">
-            Manage premium access for real users from MongoDB Atlas.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -238,7 +296,7 @@ export function UsersPage() {
             className="btn-primary h-9 px-3 text-[12px]"
             disabled={exportingAll || loading}
             onClick={handleExportAll}
-            title="Download all users with full profile & onboarding data"
+            title={`Download all ${activePlatformLabel} users with full profile data`}
           >
             {exportingAll ? 'Exporting…' : 'Export all (Excel)'}
           </button>
@@ -259,11 +317,7 @@ export function UsersPage() {
         <div className="surface p-4 text-[13px]">
           <div className="font-semibold text-neutral-900">Couldn’t load users</div>
           <div className="mt-1 text-neutral-500">{error}</div>
-          <button
-            type="button"
-            className="btn-ghost mt-3 h-8 px-2.5 text-[12px]"
-            onClick={fetchUsers}
-          >
+          <button type="button" className="btn-ghost mt-3 h-8 px-2.5 text-[12px]" onClick={fetchUsers}>
             Retry
           </button>
         </div>
@@ -299,7 +353,12 @@ export function UsersPage() {
         loading={loading}
       />
 
-      <UserDetailDrawer userId={detailUserId} open={detailOpen} onClose={closeUserDetail} />
+      <UserDetailDrawer
+        userId={detailUserId}
+        platform={platform}
+        open={detailOpen}
+        onClose={closeUserDetail}
+      />
     </div>
   );
 }
