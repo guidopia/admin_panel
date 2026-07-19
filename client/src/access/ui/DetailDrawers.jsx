@@ -252,6 +252,7 @@ export function CounselorDetailDrawer({
   onEdit,
   onRegenerate,
   onDelete,
+  canManage = true,
 }) {
   if (!counselor) return null;
 
@@ -271,21 +272,29 @@ export function CounselorDetailDrawer({
       subtitle={counselor.email}
       onClose={onClose}
       footer={
-        <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onRegenerate(counselor)}>
-            Regenerate code
-          </button>
-          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onEdit(counselor)}>
-            Edit
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-white px-3 text-[12px] font-medium text-red-700 hover:bg-red-50"
-            onClick={() => onDelete(counselor)}
-          >
-            Delete
-          </button>
-        </div>
+        canManage ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onRegenerate(counselor)}>
+              Regenerate code
+            </button>
+            <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onEdit(counselor)}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-white px-3 text-[12px] font-medium text-red-700 hover:bg-red-50"
+              onClick={() => onDelete(counselor)}
+            >
+              Delete
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        )
       }
     >
       <div className="space-y-5">
@@ -345,7 +354,7 @@ export function CounselorDetailDrawer({
   );
 }
 
-export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, onToggleStatus }) {
+export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, onToggleStatus, canManage = true }) {
   if (!organization) return null;
 
   return (
@@ -371,14 +380,16 @@ export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, 
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onEdit(organization)}>
-            Edit organization
-          </button>
-          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onToggleStatus(organization)}>
-            {organization.status === 'active' ? 'Deactivate' : 'Activate'}
-          </button>
-        </div>
+        {canManage ? (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onEdit(organization)}>
+              Edit organization
+            </button>
+            <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onToggleStatus(organization)}>
+              {organization.status === 'active' ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
+        ) : null}
       </div>
     </DrawerShell>
   );

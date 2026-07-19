@@ -8,7 +8,16 @@ function formatDate(iso) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
-export function OrganizationsPanel({ organizations, query, onQueryChange, onSelect, onAdd, onEdit, onToggleStatus }) {
+export function OrganizationsPanel({
+  organizations,
+  query,
+  onQueryChange,
+  onSelect,
+  onAdd,
+  onEdit,
+  onToggleStatus,
+  canManage = true,
+}) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return organizations;
@@ -29,9 +38,11 @@ export function OrganizationsPanel({ organizations, query, onQueryChange, onSele
             onChange={onQueryChange}
             placeholder="Search organizations by name or branding"
           />
-          <button type="button" className="btn-primary h-9 shrink-0 px-3 text-[12px]" onClick={onAdd}>
-            Add organization
-          </button>
+          {canManage ? (
+            <button type="button" className="btn-primary h-9 shrink-0 px-3 text-[12px]" onClick={onAdd}>
+              Add organization
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -69,12 +80,16 @@ export function OrganizationsPanel({ organizations, query, onQueryChange, onSele
                         <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onSelect(org)}>
                           View
                         </button>
-                        <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onEdit(org)}>
-                          Edit
-                        </button>
-                        <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onToggleStatus(org)}>
-                          {org.status === 'active' ? 'Deactivate' : 'Activate'}
-                        </button>
+                        {canManage ? (
+                          <>
+                            <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onEdit(org)}>
+                              Edit
+                            </button>
+                            <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onToggleStatus(org)}>
+                              {org.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

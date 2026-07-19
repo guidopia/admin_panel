@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { ModalShell } from './primitives.jsx';
 
-export function AddCounselorModal({ open, onClose, organizations, onSubmit }) {
+export function AddCounselorModal({ open, onClose, organizations, onSubmit, hideOrganizationSelect = false }) {
   const [form, setForm] = useState({
     organizationId: organizations[0]?.id || '',
     name: '',
@@ -50,17 +50,23 @@ export function AddCounselorModal({ open, onClose, organizations, onSubmit }) {
       <form id="add-counselor-form" className="space-y-3.5" onSubmit={handleSubmit}>
         <div>
           <label className="mb-1 block text-[12px] font-medium text-neutral-700">Organization</label>
-          <select
-            className="input h-9"
-            value={form.organizationId}
-            onChange={(e) => update('organizationId', e.target.value)}
-          >
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
+          {hideOrganizationSelect ? (
+            <div className="input h-9 flex items-center bg-neutral-50 text-[13px] text-neutral-700">
+              {organizations[0]?.name || 'Your organization'}
+            </div>
+          ) : (
+            <select
+              className="input h-9"
+              value={form.organizationId}
+              onChange={(e) => update('organizationId', e.target.value)}
+            >
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-[12px] font-medium text-neutral-700">Name</label>

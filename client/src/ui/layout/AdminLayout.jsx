@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../state/auth/AuthContext.jsx';
+import { isAccessUser } from '../../access/lib/accessSession.js';
 import { setApiAuthToken } from '../../lib/api.js';
 
 const COLLAPSED_KEY = 'guidopia_sidebar_collapsed';
@@ -220,6 +221,8 @@ function SidebarContent({
   collapsed,
   onToggleCollapsed,
   showCollapseToggle,
+  showUsersNav,
+  showAccessNav,
 }) {
   const initials = useMemo(
     () => getInitials(user?.name || user?.email || 'Admin'),
@@ -269,20 +272,24 @@ function SidebarContent({
           </div>
         ) : null}
         <nav className={['space-y-0.5', collapsed ? 'flex flex-col items-center' : ''].join(' ')}>
-          <NavItem
-            to="/users"
-            label="Users"
-            icon={<UsersIcon />}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-          <NavItem
-            to="/access"
-            label="Access Control"
-            icon={<AccessIcon />}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
+          {showUsersNav ? (
+            <NavItem
+              to="/users"
+              label="Users"
+              icon={<UsersIcon />}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ) : null}
+          {showAccessNav ? (
+            <NavItem
+              to="/access"
+              label="Access Control"
+              icon={<AccessIcon />}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ) : null}
         </nav>
       </div>
 
@@ -341,6 +348,8 @@ const SECTION_TITLES = {
 
 export function AdminLayout() {
   const { token, user, logout } = useAuth();
+  const showUsersNav = !isAccessUser(user);
+  const showAccessNav = isAccessUser(user);
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -398,6 +407,8 @@ export function AdminLayout() {
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
             showCollapseToggle
+            showUsersNav={showUsersNav}
+            showAccessNav={showAccessNav}
           />
         </aside>
 
@@ -414,6 +425,8 @@ export function AdminLayout() {
                 collapsed={false}
                 onNavigate={() => setMobileOpen(false)}
                 showCollapseToggle={false}
+                showUsersNav={showUsersNav}
+                showAccessNav={showAccessNav}
               />
             </div>
           </div>

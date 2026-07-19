@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import { api, setApiAuthToken } from '../lib/api.js';
@@ -99,8 +99,14 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div className="mt-4 text-center text-[11.5px] text-neutral-400">
-          Protected admin area · MongoDB Atlas
+        <div className="mt-4 space-y-2 text-center text-[11.5px] text-neutral-400">
+          <div>Protected admin area · MongoDB Atlas</div>
+          <div>
+            Access Control login?{' '}
+            <Link to="/login/access" className="font-medium text-neutral-600 hover:text-neutral-900">
+              Use role portal
+            </Link>
+          </div>
         </div>
       </div>
     </div>

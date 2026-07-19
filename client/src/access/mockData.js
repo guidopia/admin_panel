@@ -216,6 +216,30 @@ export const REFERRAL_CODE_RULES = [
   'Immutable by default — admin may regenerate if required',
 ];
 
+export const ACCESS_PORTALS = [
+  {
+    id: 'portal_super_admin',
+    accessRole: ROLES.SUPER_ADMIN,
+    name: 'Guidopia Super Admin',
+    demoEmail: 'superadmin@guidopia.com',
+  },
+  {
+    id: 'portal_org_admin',
+    accessRole: ROLES.WL_ADMIN,
+    name: 'Meera Nair',
+    demoEmail: 'meera@brightfuture.edu',
+    organizationId: 'org_1',
+  },
+  {
+    id: 'portal_counselor',
+    accessRole: ROLES.COUNSELOR,
+    name: 'Rahul Sharma',
+    demoEmail: 'rahul.sharma@brightfuture.edu',
+    organizationId: 'org_1',
+    counselorId: 'csl_1',
+  },
+];
+
 export const ANALYTICS = {
   totalOrganizations: 3,
   activeOrganizations: 2,

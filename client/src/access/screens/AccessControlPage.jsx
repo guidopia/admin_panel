@@ -1,6 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
+import { useAuth } from '../../state/auth/AuthContext.jsx';
+import {
+  accessRoleLabel,
+  getAccessCounselorId,
+  getAccessOrganizationId,
+  getAccessRole,
+  isCounselor,
+  isOrgAdmin,
+  isSuperAdmin,
+} from '../lib/accessSession.js';
 import {
   ADMINS as INITIAL_ADMINS,
   ANALYTICS,
@@ -34,14 +44,7 @@ import { OrganizationsPanel } from '../ui/OrganizationsPanel.jsx';
 import { ReferralCodeSuccessModal, RegenerateReferralModal } from '../ui/ReferralModals.jsx';
 import { StudentsPanel } from '../ui/StudentsPanel.jsx';
 
-const ROLE_OPTIONS = [
-  { value: ROLES.SUPER_ADMIN, label: 'Super Admin (Guidopia)' },
-  { value: ROLES.WL_ADMIN, label: 'White-label Admin' },
-  { value: ROLES.COUNSELOR, label: 'Counselor' },
-];
-
 const DEMO_ORG_ID = 'org_1';
-const DEMO_COUNSELOR_ID = 'csl_1';
 
 const SUPER_ADMIN_TABS = [
   { id: 'organizations', label: 'Organizations' },
@@ -66,8 +69,10 @@ const COUNSELOR_TABS = [
   { id: 'reports', label: 'Reports' },
 ];
 
-function roleLabel(role) {
-  return ROLE_OPTIONS.find((r) => r.value === role)?.label || role;
+function initialTabForRole(role) {
+  if (role === ROLES.SUPER_ADMIN) return 'students';
+  if (role === ROLES.WL_ADMIN) return 'counselors';
+  return 'my-students';
 }
 
 function ReportsPlaceholder({ title, description }) {
@@ -100,8 +105,12 @@ function syncOrganizationCounts(orgs, counselorList, studentList) {
 }
 
 export function AccessControlPage() {
-  const [previewRole, setPreviewRole] = useState(ROLES.SUPER_ADMIN);
-  const [activeTab, setActiveTab] = useState('organizations');
+  const { user } = useAuth();
+  const accessRole = getAccessRole(user);
+  const organizationId = getAccessOrganizationId(user) || DEMO_ORG_ID;
+  const counselorId = getAccessCounselorId(user);
+
+  const [activeTab, setActiveTab] = useState(() => initialTabForRole(accessRole));
 
   const [organizations, setOrganizations] = useState(INITIAL_ORGANIZATIONS);
   const [admins] = useState(INITIAL_ADMINS);
@@ -127,24 +136,35 @@ export function AccessControlPage() {
   const [regenerateCounselor, setRegenerateCounselor] = useState(null);
   const [toggleOrg, setToggleOrg] = useState(null);
 
+  useEffect(() => {
+    setActiveTab(initialTabForRole(accessRole));
+  }, [accessRole]);
+
   const demoOrganization = useMemo(
-    () => organizations.find((o) => o.id === DEMO_ORG_ID) || organizations[0],
-    [organizations]
+    () => organizations.find((o) => o.id === organizationId) || organizations[0],
+    [organizations, organizationId]
   );
 
   const scopedCounselors = useMemo(() => {
-    if (previewRole === ROLES.SUPER_ADMIN) return counselors;
-    return counselors.filter((c) => c.organizationId === DEMO_ORG_ID);
-  }, [counselors, previewRole]);
+    if (isSuperAdmin(user)) return counselors;
+    if (isOrgAdmin(user)) return counselors.filter((c) => c.organizationId === organizationId);
+    return [];
+  }, [counselors, user, organizationId]);
 
   const scopedStudents = useMemo(() => {
-    if (previewRole === ROLES.SUPER_ADMIN) return students;
-    if (previewRole === ROLES.WL_ADMIN) return students.filter((s) => s.organizationId === DEMO_ORG_ID);
-    return students.filter((s) => s.assignedCounselorId === DEMO_COUNSELOR_ID);
-  }, [students, previewRole]);
+    if (isSuperAdmin(user)) return students;
+    if (isOrgAdmin(user)) return students.filter((s) => s.organizationId === organizationId);
+    const myCode = counselors.find((c) => c.id === counselorId)?.referralCode;
+    if (counselorId) {
+      return students.filter(
+        (s) => s.assignedCounselorId === counselorId || (myCode && s.referralCodeEntered === myCode)
+      );
+    }
+    return [];
+  }, [students, user, organizationId, counselorId, counselors]);
 
   const tabs = useMemo(() => {
-    if (previewRole === ROLES.SUPER_ADMIN) {
+    if (isSuperAdmin(user)) {
       return SUPER_ADMIN_TABS.map((tab) => {
         if (tab.id === 'organizations') return { ...tab, count: organizations.length };
         if (tab.id === 'admins') return { ...tab, count: admins.length };
@@ -153,8 +173,8 @@ export function AccessControlPage() {
         return tab;
       });
     }
-    if (previewRole === ROLES.WL_ADMIN) {
-      const orgStudents = students.filter((s) => s.organizationId === DEMO_ORG_ID);
+    if (isOrgAdmin(user)) {
+      const orgStudents = students.filter((s) => s.organizationId === organizationId);
       return WL_ADMIN_TABS.map((tab) => {
         if (tab.id === 'counselors') return { ...tab, count: scopedCounselors.length };
         if (tab.id === 'students') return { ...tab, count: orgStudents.length };
@@ -167,18 +187,7 @@ export function AccessControlPage() {
     return COUNSELOR_TABS.map((tab) =>
       tab.id === 'my-students' ? { ...tab, count: scopedStudents.length } : tab
     );
-  }, [previewRole, organizations, admins, counselors, students, scopedCounselors, scopedStudents]);
-
-  const handleRoleChange = useCallback((role) => {
-    setPreviewRole(role);
-    if (role === ROLES.SUPER_ADMIN) setActiveTab('organizations');
-    else if (role === ROLES.WL_ADMIN) setActiveTab('profile');
-    else setActiveTab('my-students');
-    setDetailStudent(null);
-    setDetailOrganization(null);
-    setDetailCounselor(null);
-    setAssignStudent(null);
-  }, []);
+  }, [user, organizations, admins, counselors, students, scopedCounselors, scopedStudents, organizationId]);
 
   const syncCounselorCounts = useCallback((nextStudents) => {
     setCounselors((prev) => {
@@ -191,30 +200,36 @@ export function AccessControlPage() {
     });
   }, []);
 
-  const syncCounselorOrgCounts = useCallback((nextCounselors, studentList = students) => {
-    setOrganizations((orgs) => syncOrganizationCounts(orgs, nextCounselors, studentList));
-  }, [students]);
+  const syncCounselorOrgCounts = useCallback(
+    (nextCounselors, studentList = students) => {
+      setOrganizations((orgs) => syncOrganizationCounts(orgs, nextCounselors, studentList));
+    },
+    [students]
+  );
 
-  const handleAddCounselor = useCallback((form) => {
-    const referralCode = generateReferralCode(form.name);
-    const newCounselor = {
-      id: `csl_${Date.now()}`,
-      organizationId: form.organizationId,
-      name: form.name.trim(),
-      email: form.email.trim().toLowerCase(),
-      phone: form.phone.trim(),
-      referralCode,
-      status: 'active',
-      studentCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-    setCounselors((prev) => {
-      const next = [newCounselor, ...prev];
-      syncCounselorOrgCounts(next);
-      return next;
-    });
-    setCreatedCounselor(newCounselor);
-  }, [syncCounselorOrgCounts]);
+  const handleAddCounselor = useCallback(
+    (form) => {
+      const referralCode = generateReferralCode(form.name);
+      const newCounselor = {
+        id: `csl_${Date.now()}`,
+        organizationId: organizationId,
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        referralCode,
+        status: 'active',
+        studentCount: 0,
+        createdAt: new Date().toISOString(),
+      };
+      setCounselors((prev) => {
+        const next = [newCounselor, ...prev];
+        syncCounselorOrgCounts(next);
+        return next;
+      });
+      setCreatedCounselor(newCounselor);
+    },
+    [organizationId, syncCounselorOrgCounts]
+  );
 
   const handleEditCounselor = useCallback((id, form) => {
     setCounselors((prev) =>
@@ -266,14 +281,14 @@ export function AccessControlPage() {
   }, []);
 
   const handleAssignCounselor = useCallback(
-    (studentId, counselorId) => {
-      const counselor = counselors.find((c) => c.id === counselorId);
+    (studentId, counselorIdValue) => {
+      const counselor = counselors.find((c) => c.id === counselorIdValue);
       setStudents((prev) => {
         const next = prev.map((s) =>
           s.id === studentId
             ? {
                 ...s,
-                assignedCounselorId: counselorId,
+                assignedCounselorId: counselorIdValue,
                 referralCodeEntered: s.referralCodeEntered || counselor?.referralCode || null,
                 registrationType: s.registrationType || 'referral',
               }
@@ -286,7 +301,7 @@ export function AccessControlPage() {
         prev?.id === studentId
           ? {
               ...prev,
-              assignedCounselorId: counselorId,
+              assignedCounselorId: counselorIdValue,
               referralCodeEntered: prev.referralCodeEntered || counselor?.referralCode || null,
             }
           : prev
@@ -344,63 +359,52 @@ export function AccessControlPage() {
     toast.success(`Organization ${nextStatus === 'active' ? 'activated' : 'deactivated'}`);
   }, []);
 
-  const showOrgColumn = previewRole === ROLES.SUPER_ADMIN;
-  const canManageCounselors = previewRole !== ROLES.COUNSELOR;
-  const canAssignStudents = previewRole !== ROLES.COUNSELOR;
-  const isCounselorView = previewRole === ROLES.COUNSELOR;
+  const canManageOrganizations = isSuperAdmin(user);
+  const canManageCounselors = isOrgAdmin(user);
+  const canAssignStudents = isOrgAdmin(user);
+  const isCounselorView = isCounselor(user);
+  const showOrgColumn = isSuperAdmin(user);
+  const showCounselorsTab = isSuperAdmin(user) || isOrgAdmin(user);
 
   return (
     <div className="space-y-5 pb-10">
       <header className="space-y-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">Access Control</h1>
-              <span className="chip-outline">RBAC + Referrals</span>
-              <span className="chip bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200/80">
-                UI skeleton
-              </span>
-            </div>
-            <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-neutral-500">
-              Full spec coverage: organizations, admins, counselors, referral codes, student assignment flows,
-              role-based views. Mock data only — backend integration pending.
-            </p>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">Access Control</h1>
+            <span className="chip-outline">{accessRoleLabel(accessRole)}</span>
+            <span className="chip bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200/80">
+              UI skeleton
+            </span>
           </div>
-
-          <div className="surface-flat min-w-[240px] p-3">
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
-              Preview role
-            </label>
-            <select
-              className="input h-9 text-[13px]"
-              value={previewRole}
-              onChange={(e) => handleRoleChange(e.target.value)}
-            >
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-neutral-500">
+            {isSuperAdmin(user)
+              ? 'Platform-wide view. See all organizations, counselors, and students. Creating counselors is handled by Organization Admins only.'
+              : null}
+            {isOrgAdmin(user)
+              ? `Organization Admin for ${demoOrganization?.name}. Create counselors with referral codes and manage your students.`
+              : null}
+            {isCounselorView
+              ? 'Counselor view. You only see students who onboarded with your referral code.'
+              : null}
+          </p>
         </div>
 
-        {previewRole === ROLES.SUPER_ADMIN ? <StatCards stats={ANALYTICS} /> : null}
+        {isSuperAdmin(user) ? <StatCards stats={ANALYTICS} /> : null}
 
-        {previewRole !== ROLES.SUPER_ADMIN ? (
+        {!isSuperAdmin(user) ? (
           <div className="surface-flat px-4 py-3 text-[12.5px] text-neutral-600">
-            Viewing as <span className="font-medium text-neutral-900">{roleLabel(previewRole)}</span>
-            {previewRole === ROLES.WL_ADMIN ? (
-              <> for <span className="font-medium text-neutral-900">{demoOrganization?.name}</span></>
+            Signed in as <span className="font-medium text-neutral-900">{user?.name || user?.email}</span>
+            {isOrgAdmin(user) ? (
+              <> · <span className="font-medium text-neutral-900">{demoOrganization?.name}</span></>
             ) : null}
-            {previewRole === ROLES.COUNSELOR ? <> · Rahul Sharma · assigned students only</> : null}
           </div>
         ) : null}
 
         <AccessTabs tabs={tabs} value={activeTab} onChange={setActiveTab} />
       </header>
 
-      {activeTab === 'organizations' && previewRole === ROLES.SUPER_ADMIN ? (
+      {activeTab === 'organizations' && isSuperAdmin(user) ? (
         <OrganizationsPanel
           organizations={organizations}
           query={orgQuery}
@@ -409,14 +413,15 @@ export function AccessControlPage() {
           onAdd={() => setOrgForm({ open: true, mode: 'create', organization: null })}
           onEdit={(org) => setOrgForm({ open: true, mode: 'edit', organization: org })}
           onToggleStatus={setToggleOrg}
+          canManage={canManageOrganizations}
         />
       ) : null}
 
-      {activeTab === 'admins' && previewRole === ROLES.SUPER_ADMIN ? (
+      {activeTab === 'admins' && isSuperAdmin(user) ? (
         <AdminsPanel admins={admins} organizations={organizations} query={adminQuery} onQueryChange={setAdminQuery} />
       ) : null}
 
-      {activeTab === 'profile' && previewRole === ROLES.WL_ADMIN ? (
+      {activeTab === 'profile' && isOrgAdmin(user) ? (
         <OrganizationProfilePanel
           organization={demoOrganization}
           onEdit={() => setOrgForm({ open: true, mode: 'edit', organization: demoOrganization })}
@@ -430,7 +435,7 @@ export function AccessControlPage() {
         />
       ) : null}
 
-      {activeTab === 'analytics' && previewRole === ROLES.WL_ADMIN ? (
+      {activeTab === 'analytics' && isOrgAdmin(user) ? (
         <OrganizationAnalyticsPanel
           organization={demoOrganization}
           students={students}
@@ -438,7 +443,7 @@ export function AccessControlPage() {
         />
       ) : null}
 
-      {activeTab === 'counselors' && canManageCounselors ? (
+      {activeTab === 'counselors' && showCounselorsTab ? (
         <CounselorsPanel
           counselors={scopedCounselors}
           organizations={organizations}
@@ -450,7 +455,7 @@ export function AccessControlPage() {
           onDeleteCounselor={setDeleteCounselor}
           onRegenerateCode={setRegenerateCounselor}
           showOrgColumn={showOrgColumn}
-          canManage
+          canManage={canManageCounselors}
         />
       ) : null}
 
@@ -468,7 +473,7 @@ export function AccessControlPage() {
         />
       )}
 
-      {activeTab === 'unassigned' && previewRole === ROLES.WL_ADMIN ? (
+      {activeTab === 'unassigned' && isOrgAdmin(user) ? (
         <StudentsPanel
           students={scopedStudents}
           counselors={counselors}
@@ -484,9 +489,9 @@ export function AccessControlPage() {
         />
       ) : null}
 
-      {activeTab === 'referrals' && previewRole === ROLES.SUPER_ADMIN ? <ReferralSystemPanel /> : null}
+      {activeTab === 'referrals' && isSuperAdmin(user) ? <ReferralSystemPanel /> : null}
 
-      {activeTab === 'analytics' && previewRole === ROLES.SUPER_ADMIN ? <AnalyticsPanel stats={ANALYTICS} /> : null}
+      {activeTab === 'analytics' && isSuperAdmin(user) ? <AnalyticsPanel stats={ANALYTICS} /> : null}
 
       {activeTab === 'reports' ? (
         <ReportsPlaceholder
@@ -494,7 +499,7 @@ export function AccessControlPage() {
           description={
             isCounselorView
               ? 'Counselors can export reports for their assigned students only.'
-              : 'White-label admins can export organization-level student and counselor reports.'
+              : 'Organization admins can export organization-level student and counselor reports.'
           }
         />
       ) : null}
@@ -502,12 +507,9 @@ export function AccessControlPage() {
       <AddCounselorModal
         open={addCounselorOpen}
         onClose={() => setAddCounselorOpen(false)}
-        organizations={
-          previewRole === ROLES.SUPER_ADMIN
-            ? organizations
-            : organizations.filter((o) => o.id === DEMO_ORG_ID)
-        }
+        organizations={organizations.filter((o) => o.id === organizationId)}
         onSubmit={handleAddCounselor}
+        hideOrganizationSelect
       />
 
       <ReferralCodeSuccessModal
@@ -581,13 +583,12 @@ export function AccessControlPage() {
         counselor={detailCounselor}
         organizationName={detailCounselor ? orgName(detailCounselor.organizationId, organizations) : '—'}
         assignedStudents={
-          detailCounselor
-            ? students.filter((s) => s.assignedCounselorId === detailCounselor.id)
-            : []
+          detailCounselor ? students.filter((s) => s.assignedCounselorId === detailCounselor.id) : []
         }
         onEdit={setEditCounselor}
         onRegenerate={setRegenerateCounselor}
         onDelete={setDeleteCounselor}
+        canManage={canManageCounselors}
       />
 
       <OrganizationDetailDrawer
@@ -596,6 +597,7 @@ export function AccessControlPage() {
         organization={detailOrganization}
         onEdit={(org) => setOrgForm({ open: true, mode: 'edit', organization: org })}
         onToggleStatus={setToggleOrg}
+        canManage={canManageOrganizations}
       />
     </div>
   );
