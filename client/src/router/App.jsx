@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../screens/LoginPage.jsx';
 import { AdminLayout } from '../ui/layout/AdminLayout.jsx';
+import { AccessControlPage } from '../access/screens/AccessControlPage.jsx';
 import { UsersPage } from '../screens/UsersPage.jsx';
 import { RequireAuth } from './RequireAuth.jsx';
 
@@ -20,6 +21,7 @@ export function App() {
       >
         <Route index element={<Navigate to="/users" replace />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="access" element={<AccessControlPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

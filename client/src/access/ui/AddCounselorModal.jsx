@@ -1,0 +1,102 @@
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { ModalShell } from './primitives.jsx';
+
+export function AddCounselorModal({ open, onClose, organizations, onSubmit }) {
+  const [form, setForm] = useState({
+    organizationId: organizations[0]?.id || '',
+    name: '',
+    email: '',
+    phone: '',
+  });
+
+  function update(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error('Name and email are required');
+      return;
+    }
+    onSubmit(form);
+    setForm({
+      organizationId: organizations[0]?.id || '',
+      name: '',
+      email: '',
+      phone: '',
+    });
+    onClose();
+  }
+
+  return (
+    <ModalShell
+      open={open}
+      title="Add counselor"
+      description="Creates a counselor account and auto-generates a unique referral code. UI-only — backend will handle persistence."
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" form="add-counselor-form" className="btn-primary h-9 px-3 text-[12px]">
+            Create counselor
+          </button>
+        </>
+      }
+    >
+      <form id="add-counselor-form" className="space-y-3.5" onSubmit={handleSubmit}>
+        <div>
+          <label className="mb-1 block text-[12px] font-medium text-neutral-700">Organization</label>
+          <select
+            className="input h-9"
+            value={form.organizationId}
+            onChange={(e) => update('organizationId', e.target.value)}
+          >
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[12px] font-medium text-neutral-700">Name</label>
+          <input
+            className="input h-9"
+            value={form.name}
+            onChange={(e) => update('name', e.target.value)}
+            placeholder="Rahul Sharma"
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[12px] font-medium text-neutral-700">Email</label>
+          <input
+            className="input h-9"
+            type="email"
+            value={form.email}
+            onChange={(e) => update('email', e.target.value)}
+            placeholder="rahul@organization.com"
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[12px] font-medium text-neutral-700">Phone</label>
+          <input
+            className="input h-9"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+            placeholder="+91 98765 43210"
+          />
+        </div>
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-2.5 text-[12px] text-neutral-600">
+          On save, the system will generate a unique 6–8 character referral code (e.g.{' '}
+          <span className="font-mono font-semibold">RAH582</span>) and display it to the admin.
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
