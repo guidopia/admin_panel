@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { counselorName } from '../mockData.js';
+import { counselorName } from '../lib/accessConstants.js';
 import { ModalShell } from './primitives.jsx';
 
 export function AssignCounselorModal({ open, onClose, student, counselors, onSubmit }) {

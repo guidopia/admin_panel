@@ -1,8 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { AUTH_STORAGE_KEY as STORAGE_KEY } from '../../lib/api.js';
 
 const AuthContext = createContext(null);
-
-const STORAGE_KEY = 'guidopia_admin_auth';
 
 function safeParse(json) {
   try {

@@ -11,6 +11,11 @@ import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import accessRoutes from './routes/accessRoutes.js';
+import { AccessUser } from './models/AccessUser.js';
+import { Counselor } from './models/Counselor.js';
+import { Organization } from './models/Organization.js';
+import { Student } from './models/Student.js';
 
 const app = express();
 
@@ -52,6 +57,7 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/access', accessRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -60,6 +66,13 @@ const port = Number(process.env.PORT || 5000);
 
 async function start() {
   await connectDB(process.env.MONGODB_URI);
+
+  await Promise.all([
+    Organization.syncIndexes(),
+    AccessUser.syncIndexes(),
+    Counselor.syncIndexes(),
+    Student.syncIndexes(),
+  ]);
 
   const careerBeaconUri = (process.env.MONGODB_URI_CAREER_BEACON || '').trim();
   if (careerBeaconUri) {

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { orgName } from '../mockData.js';
+import { orgName } from '../lib/accessConstants.js';
 import { EmptyState, SearchInput, StatusBadge } from './primitives.jsx';
 
 function formatDate(iso) {
@@ -9,7 +9,7 @@ function formatDate(iso) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
-export function AdminsPanel({ admins, organizations, query, onQueryChange }) {
+export function AdminsPanel({ admins, organizations, query, onQueryChange, onAdd }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return admins;
@@ -26,9 +26,11 @@ export function AdminsPanel({ admins, organizations, query, onQueryChange }) {
       <div className="surface p-2.5">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
           <SearchInput value={query} onChange={onQueryChange} placeholder="Search admins by name, email, or organization" />
-          <button type="button" className="btn-primary h-9 shrink-0 px-3 text-[12px]" disabled title="Backend integration pending">
-            Add admin
-          </button>
+          {onAdd ? (
+            <button type="button" className="btn-primary h-9 shrink-0 px-3 text-[12px]" onClick={onAdd}>
+              Add admin
+            </button>
+          ) : null}
         </div>
       </div>
 

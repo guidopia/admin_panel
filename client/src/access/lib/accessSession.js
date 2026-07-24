@@ -1,4 +1,4 @@
-import { ROLES } from '../mockData.js';
+import { ROLES } from './accessConstants.js';
 
 export function getAccessRole(user) {
   return user?.accessRole || null;

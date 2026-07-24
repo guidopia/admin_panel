@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { counselorName, orgName } from '../mockData.js';
+import { counselorName, orgName } from '../lib/accessConstants.js';
 import {
   AssignmentBadge,
   EmptyState,

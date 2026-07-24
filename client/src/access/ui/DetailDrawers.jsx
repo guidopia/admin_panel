@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { counselorName } from '../mockData.js';
+import { counselorName } from '../lib/accessConstants.js';
 import {
   AssignmentBadge,
   DrawerShell,
@@ -49,6 +49,44 @@ function StudentTabBar({ tabs, value, onChange }) {
   );
 }
 
+function NoteComposer({ onAdd }) {
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    try {
+      await onAdd(trimmed);
+      setText('');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <textarea
+        className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-[13px] outline-none transition focus:border-neutral-400"
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Add a note about this student…"
+        maxLength={2000}
+      />
+      <button
+        type="button"
+        className="btn-primary h-9 w-full justify-center text-[12px]"
+        disabled={saving || !text.trim()}
+        onClick={submit}
+      >
+        {saving ? 'Saving…' : 'Add note'}
+      </button>
+    </div>
+  );
+}
+
 function RegistrationCaseCard({ student }) {
   const isReferral = student.registrationType === 'referral' || Boolean(student.referralCodeEntered);
   return (
@@ -72,6 +110,7 @@ export function StudentDetailDrawer({
   counselors,
   organizationName,
   onAssign,
+  onAddNote,
   viewerRole = 'admin',
   canAssign = true,
 }) {
@@ -231,11 +270,7 @@ export function StudentDetailDrawer({
             ) : (
               <div className="surface-flat p-6 text-center text-[13px] text-neutral-500">No notes yet</div>
             )}
-            {isCounselorView ? (
-              <button type="button" className="btn-ghost h-9 w-full justify-center text-[12px]" disabled title="Backend integration pending">
-                Add note
-              </button>
-            ) : null}
+            {onAddNote ? <NoteComposer onAdd={(text) => onAddNote(student.id, text)} /> : null}
           </div>
         ) : null}
       </div>

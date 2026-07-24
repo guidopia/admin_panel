@@ -1,6 +1,6 @@
 import React from 'react';
 import toast from 'react-hot-toast';
-import { REFERRAL_CODE_RULES } from '../mockData.js';
+import { REFERRAL_CODE_RULES } from '../lib/accessConstants.js';
 import { ModalShell, ReferralCodeBadge } from './primitives.jsx';
 
 function FlowStep({ step, title, detail, last }) {
@@ -60,6 +60,18 @@ export function ReferralCodeSuccessModal({ open, onClose, counselor }) {
           </div>
           <p className="mt-2 text-[12px] text-neutral-500">{counselor.email} · Account active</p>
         </div>
+
+        {counselor.temporaryPassword ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-[12px] text-amber-900">
+            <div className="flex items-center justify-between gap-2">
+              <span>Temporary password</span>
+              <span className="font-mono font-semibold">{counselor.temporaryPassword}</span>
+            </div>
+            <p className="mt-1 text-[11px] text-amber-800">
+              Share securely with the counselor. Shown only once — they should change it after signing in.
+            </p>
+          </div>
+        ) : null}
 
         <div>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { orgName } from '../mockData.js';
+import { orgName } from '../lib/accessConstants.js';
 import { EmptyState, ReferralCodeBadge, SearchInput, StatusBadge } from './primitives.jsx';
 
 function formatDate(iso) {

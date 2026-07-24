@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "Guidopia Access Control API",
+    "description": "RBAC Access Control APIs — Super Admin, White-label Admin, Counselor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "organizationId", "value": "" },
+    { "key": "counselorId", "value": "" },
+    { "key": "studentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Access Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('accessToken', json.token);",
+                  "if (json.user && json.user.organizationId) pm.collectionVariables.set('organizationId', json.user.organizationId);",
+                  "if (json.user && json.user.counselorId) pm.collectionVariables.set('counselorId', json.user.counselorId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@guidopia.com\",\n  \"password\": \"SuperAdmin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/auth/login"
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "List Organizations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/organizations"
+          }
+        },
+        {
+          "name": "Create Organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.organization) pm.collectionVariables.set('organizationId', json.organization.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bright Future Academy\",\n  \"branding\": \"BFA\",\n  \"primaryColor\": \"#171717\",\n  \"logoUrl\": \"\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/organizations"
+          }
+        },
+        {
+          "name": "Toggle Organization Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/organizations/{{organizationId}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admins",
+      "item": [
+        {
+          "name": "Create Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"name\": \"Meera Nair\",\n  \"email\": \"meera@brightfuture.edu\",\n  \"password\": \"Admin@12345\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/admins"
+          }
+        },
+        {
+          "name": "List Admins",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/admins?organizationId={{organizationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Counselors",
+      "item": [
+        {
+          "name": "Create Counselor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.counselor) pm.collectionVariables.set('counselorId', json.counselor.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"name\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@brightfuture.edu\",\n  \"phone\": \"+91 98765 43210\",\n  \"password\": \"Counselor@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/counselors"
+          }
+        },
+        {
+          "name": "List Counselors",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/counselors?organizationId={{organizationId}}"
+          }
+        },
+        {
+          "name": "Regenerate Referral Code",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/counselors/{{counselorId}}/referral-code"
+          }
+        },
+        {
+          "name": "Delete Counselor (unassigns students)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/counselors/{{counselorId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Students",
+      "item": [
+        {
+          "name": "Register Student (with referral)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.student) pm.collectionVariables.set('studentId', json.student.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aarav Mehta\",\n  \"email\": \"aarav.mehta@student.in\",\n  \"phone\": \"+91 90001 11111\",\n  \"referralCode\": \"RAH123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/students/register"
+          }
+        },
+        {
+          "name": "Register Student (unassigned)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kabir Joshi\",\n  \"email\": \"kabir.joshi@student.in\",\n  \"phone\": \"+91 90003 33333\",\n  \"organizationId\": \"{{organizationId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/students/register"
+          }
+        },
+        {
+          "name": "List Students",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/students"
+          }
+        },
+        {
+          "name": "List Unassigned",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/students/unassigned"
+          }
+        },
+        {
+          "name": "Assign Counselor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"counselorId\": \"{{counselorId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/students/{{studentId}}/assign"
+          }
+        },
+        {
+          "name": "Add Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Follow up on STEM programs next week.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/access/students/{{studentId}}/notes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Platform Analytics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/analytics"
+          }
+        },
+        {
+          "name": "Org Analytics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/access/analytics?organizationId={{organizationId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

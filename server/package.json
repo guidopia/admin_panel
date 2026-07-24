@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "make:admin": "node scripts/makeAdmin.js"
+    "make:admin": "node scripts/makeAdmin.js",
+    "seed:super-admin": "node scripts/seedSuperAdmin.js",
+    "seed:access-demo": "node scripts/seedAccessDemo.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

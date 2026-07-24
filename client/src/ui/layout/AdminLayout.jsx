@@ -220,6 +220,8 @@ function SidebarContent({
   collapsed,
   onToggleCollapsed,
   showCollapseToggle,
+  showUsers,
+  showAccess,
 }) {
   const initials = useMemo(
     () => getInitials(user?.name || user?.email || 'Admin'),
@@ -269,20 +271,24 @@ function SidebarContent({
           </div>
         ) : null}
         <nav className={['space-y-0.5', collapsed ? 'flex flex-col items-center' : ''].join(' ')}>
-          <NavItem
-            to="/users"
-            label="Users"
-            icon={<UsersIcon />}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-          <NavItem
-            to="/access"
-            label="Access Control"
-            icon={<AccessIcon />}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
+          {showUsers ? (
+            <NavItem
+              to="/users"
+              label="Users"
+              icon={<UsersIcon />}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ) : null}
+          {showAccess ? (
+            <NavItem
+              to="/access"
+              label="Access Control"
+              icon={<AccessIcon />}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ) : null}
         </nav>
       </div>
 
@@ -377,9 +383,11 @@ export function AdminLayout() {
     });
   }, []);
 
+  const isAccessUser = Boolean(user?.accessRole);
+
   function handleLogout() {
     logout();
-    navigate('/login', { replace: true });
+    navigate(isAccessUser ? '/login/access' : '/login', { replace: true });
   }
 
   return (
@@ -398,6 +406,8 @@ export function AdminLayout() {
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
             showCollapseToggle
+            showUsers={!isAccessUser}
+            showAccess={isAccessUser}
           />
         </aside>
 
@@ -414,6 +424,8 @@ export function AdminLayout() {
                 collapsed={false}
                 onNavigate={() => setMobileOpen(false)}
                 showCollapseToggle={false}
+                showUsers={!isAccessUser}
+                showAccess={isAccessUser}
               />
             </div>
           </div>
