@@ -17,7 +17,11 @@ function PlatformTabsImpl({ platforms, value, onChange, disabled }) {
             onClick={() => onChange(platform.id)}
             title={
               platform.configured === false
-                ? `${platform.label} is not configured — add MONGODB_URI_CAREER_BEACON to server .env`
+                ? platform.id === 'vidhyasaarthi'
+                  ? `${platform.label} is not configured — add MONGODB_URI_VIDHYASAARTHI to server .env`
+                  : platform.id === 'career-beacon'
+                    ? `${platform.label} is not configured — add MONGODB_URI_CAREER_BEACON to server .env`
+                    : `${platform.label} is not configured`
                 : `View ${platform.label} users`
             }
           >

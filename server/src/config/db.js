@@ -17,6 +17,7 @@ export async function connectDB(mongoUri) {
 }
 
 let careerBeaconConnection = null;
+let vidhyasaarthiConnection = null;
 
 export async function connectCareerBeacon(mongoUri) {
   if (!mongoUri?.trim()) return null;
@@ -27,5 +28,24 @@ export async function connectCareerBeacon(mongoUri) {
 
   await careerBeaconConnection.asPromise();
   return careerBeaconConnection;
+}
+
+export async function connectVidhyasaarthi(mongoUri) {
+  if (!mongoUri?.trim()) return null;
+
+  vidhyasaarthiConnection = mongoose.createConnection(mongoUri.trim(), {
+    autoIndex: false,
+  });
+
+  await vidhyasaarthiConnection.asPromise();
+  return vidhyasaarthiConnection;
+}
+
+/** Prefer MONGODB_URI_VIDHYASAARTHI; also accept MONGODB_URI_VIDHYASARTHI. */
+export function getVidhyasaarthiUriFromEnv() {
+  return (
+    (process.env.MONGODB_URI_VIDHYASAARTHI || '').trim() ||
+    (process.env.MONGODB_URI_VIDHYASARTHI || '').trim()
+  );
 }
 

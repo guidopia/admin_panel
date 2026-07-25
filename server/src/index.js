@@ -5,8 +5,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-import { connectCareerBeacon, connectDB } from './config/db.js';
-import { initCareerBeaconModels } from './db/platformModels.js';
+import {
+  connectCareerBeacon,
+  connectDB,
+  connectVidhyasaarthi,
+  getVidhyasaarthiUriFromEnv,
+} from './config/db.js';
+import { initCareerBeaconModels, initVidhyasaarthiModels } from './db/platformModels.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -83,6 +88,17 @@ async function start() {
   } else {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_CAREER_BEACON not set — Career Beacon tab disabled');
+  }
+
+  const vidhyasaarthiUri = getVidhyasaarthiUriFromEnv();
+  if (vidhyasaarthiUri) {
+    const vidhyaConn = await connectVidhyasaarthi(vidhyasaarthiUri);
+    initVidhyasaarthiModels(vidhyaConn);
+    // eslint-disable-next-line no-console
+    console.log('Vidhyasaarthi database connected');
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled');
   }
 
   const server = http.createServer(app);

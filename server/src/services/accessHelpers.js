@@ -72,3 +72,26 @@ export async function findCounselorByReferralCode(code) {
     status: ENTITY_STATUS.ACTIVE,
   });
 }
+
+/**
+ * Organization used for direct (no-referral) website signups.
+ * Prefer DEFAULT_ORGANIZATION_ID; otherwise reuse/create "Direct Signups".
+ */
+export async function resolveDefaultOrganizationId() {
+  const configured = (process.env.DEFAULT_ORGANIZATION_ID || '').trim();
+  if (configured) {
+    const org = await Organization.findById(configured);
+    if (org) return org._id;
+  }
+
+  const name = (process.env.DEFAULT_ORG_NAME || 'Direct Signups').trim();
+  let org = await Organization.findOne({ name });
+  if (!org) {
+    org = await Organization.create({
+      name,
+      branding: '',
+      status: ENTITY_STATUS.ACTIVE,
+    });
+  }
+  return org._id;
+}

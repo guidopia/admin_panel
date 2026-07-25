@@ -7,6 +7,7 @@ import { PLATFORMS } from '../config/platforms.js';
 import { ApiError } from '../utils/apiError.js';
 
 let careerBeaconModels = null;
+let vidhyasaarthiModels = null;
 
 function bindModels(connection) {
   const UserModel =
@@ -31,8 +32,17 @@ export function initCareerBeaconModels(connection) {
   return careerBeaconModels;
 }
 
+export function initVidhyasaarthiModels(connection) {
+  vidhyasaarthiModels = bindModels(connection);
+  return vidhyasaarthiModels;
+}
+
 export function isCareerBeaconConfigured() {
   return Boolean(careerBeaconModels);
+}
+
+export function isVidhyasaarthiConfigured() {
+  return Boolean(vidhyasaarthiModels);
 }
 
 export function getModelsForPlatform(platform) {
@@ -41,6 +51,13 @@ export function getModelsForPlatform(platform) {
       throw new ApiError(503, 'Career Beacon database is not configured');
     }
     return careerBeaconModels;
+  }
+
+  if (platform === PLATFORMS.VIDHYASAARTHI) {
+    if (!vidhyasaarthiModels) {
+      throw new ApiError(503, 'Vidhyasaarthi database is not configured');
+    }
+    return vidhyasaarthiModels;
   }
 
   return {

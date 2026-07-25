@@ -36,6 +36,25 @@ export const registerStudent = asyncHandler(async (req, res) => {
   res.status(201).json({ student });
 });
 
+export const validateReferral = asyncHandler(async (req, res) => {
+  const result = await studentService.validateReferralCode(req.query.code);
+  res.json(result);
+});
+
+export const lookupStudentByEmail = asyncHandler(async (req, res) => {
+  const email = String(req.query.email || '').trim();
+  if (!email) throw new ApiError(400, 'email is required');
+  const result = await studentService.getStudentByEmail(email);
+  if (!result) {
+    return res.json({
+      assignmentStatus: 'not-registered',
+      student: null,
+      counselor: null,
+    });
+  }
+  res.json(result);
+});
+
 export const assignStudent = asyncHandler(async (req, res) => {
   const payload = parseOrThrow(assignStudentSchema, req.body, ApiError);
   const student = await studentService.assignStudent(

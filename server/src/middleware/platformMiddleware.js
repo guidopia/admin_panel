@@ -5,7 +5,11 @@ import {
   listPlatformMeta,
   parsePlatform,
 } from '../config/platforms.js';
-import { getModelsForPlatform, isCareerBeaconConfigured } from '../db/platformModels.js';
+import {
+  getModelsForPlatform,
+  isCareerBeaconConfigured,
+  isVidhyasaarthiConfigured,
+} from '../db/platformModels.js';
 
 export function resolveRequestPlatform(req) {
   const raw = req.query?.platform ?? req.headers['x-platform'] ?? DEFAULT_PLATFORM;
@@ -28,7 +32,10 @@ export function platformMiddleware(req, _res, next) {
 
 export function listPlatforms(_req, res) {
   res.json({
-    platforms: listPlatformMeta({ careerBeaconConfigured: isCareerBeaconConfigured() }),
+    platforms: listPlatformMeta({
+      careerBeaconConfigured: isCareerBeaconConfigured(),
+      vidhyasaarthiConfigured: isVidhyasaarthiConfigured(),
+    }),
     defaultPlatform: DEFAULT_PLATFORM,
   });
 }

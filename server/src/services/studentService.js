@@ -5,13 +5,14 @@ import { Counselor } from '../models/Counselor.js';
 import { Organization } from '../models/Organization.js';
 import { Student } from '../models/Student.js';
 import { ApiError } from '../utils/apiError.js';
-import { normalizeReferralCode } from '../utils/referralCode.js';
-import { serializeStudent } from '../utils/serializers.js';
+import { isValidReferralCodeFormat, normalizeReferralCode } from '../utils/referralCode.js';
+import { serializeCounselor, serializeStudent } from '../utils/serializers.js';
 import {
   assertOrganizationExists,
   findCounselorByReferralCode,
   hashPassword,
   refreshCounselorStudentCount,
+  resolveDefaultOrganizationId,
 } from './accessHelpers.js';
 
 function escapeRegex(s) {
@@ -116,9 +117,11 @@ export async function registerStudent(payload) {
     registrationType = REGISTRATION_TYPES.REFERRAL;
   } else {
     if (!organizationId) {
-      throw new ApiError(400, 'organizationId is required when no referral code is provided');
+      // Website direct signups: land in the default org as unassigned.
+      organizationId = await resolveDefaultOrganizationId();
+    } else {
+      await assertOrganizationExists(organizationId);
     }
-    await assertOrganizationExists(organizationId);
   }
 
   const passwordHash = payload.password ? await hashPassword(payload.password) : '';
@@ -208,4 +211,54 @@ export async function addStudentNote(accessUser, studentId, text) {
 
 export async function listUnassignedStudents(accessUser, query = {}) {
   return listStudents(accessUser, { ...query, unassigned: 'true' });
+}
+
+/**
+ * Validate a counselor referral code (used by the student website).
+ */
+export async function validateReferralCode(rawCode) {
+  const code = normalizeReferralCode(rawCode);
+  if (!code || !isValidReferralCodeFormat(code)) {
+    return { valid: false, message: 'Referral code must be 6–8 letters/numbers' };
+  }
+
+  const counselor = await findCounselorByReferralCode(code);
+  if (!counselor) {
+    return { valid: false, message: 'Invalid referral code' };
+  }
+
+  const org = await Organization.findById(counselor.organizationId).lean();
+  if (!org || org.status !== ENTITY_STATUS.ACTIVE) {
+    return { valid: false, message: 'Organization is not accepting registrations' };
+  }
+
+  return {
+    valid: true,
+    counselorName: counselor.name || '',
+    organizationId: String(counselor.organizationId),
+    counselor: serializeCounselor(counselor),
+  };
+}
+
+/**
+ * Lookup a student by email for the integrated website (live assignment).
+ */
+export async function getStudentByEmail(email) {
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  if (!normalizedEmail) return null;
+
+  const student = await Student.findOne({ email: normalizedEmail }).lean();
+  if (!student) return null;
+
+  let counselor = null;
+  if (student.assignedCounselorId) {
+    const c = await Counselor.findById(student.assignedCounselorId).lean();
+    if (c) counselor = serializeCounselor(c);
+  }
+
+  return {
+    student: serializeStudent(student),
+    counselor,
+    assignmentStatus: student.assignedCounselorId ? 'assigned' : 'unassigned',
+  };
 }

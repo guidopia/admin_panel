@@ -13,6 +13,7 @@ import {
   requireOrgAdminOrSuper,
   requireSuperAdmin,
 } from '../middleware/accessAuthMiddleware.js';
+import { requireInternalKey } from '../middleware/internalKeyMiddleware.js';
 import { ACCESS_ROLES } from '../constants/roles.js';
 
 const router = Router();
@@ -21,8 +22,12 @@ const router = Router();
 router.post('/auth/login', accessLogin);
 router.get('/auth/me', requireAccessAuth, accessMe);
 
-// ── Public student registration (referral-aware) ─────────────────────
-router.post('/students/register', studentController.registerStudent);
+// ── Public / internal website integration endpoints ───────────────────
+// Used by the integrated student website. When INTERNAL_REGISTER_KEY is set,
+// callers must send x-internal-key.
+router.post('/students/register', requireInternalKey, studentController.registerStudent);
+router.get('/referral/validate', requireInternalKey, studentController.validateReferral);
+router.get('/students/lookup', requireInternalKey, studentController.lookupStudentByEmail);
 
 // All routes below require Access JWT
 router.use(requireAccessAuth);
