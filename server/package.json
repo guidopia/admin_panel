@@ -10,7 +10,8 @@
     "make:admin": "node scripts/makeAdmin.js",
     "seed:super-admin": "node scripts/seedSuperAdmin.js",
     "seed:access-demo": "node scripts/seedAccessDemo.js",
-    "seed:default-org": "node scripts/seedDefaultOrg.js"
+    "seed:default-org": "node scripts/seedDefaultOrg.js",
+    "seed:vidhyasaarthi": "node scripts/seedVidhyasaarthiOrg.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
