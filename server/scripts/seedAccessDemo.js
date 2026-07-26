@@ -1,13 +1,16 @@
 /**
- * Seeds a demo org + white-label admin + counselor for local testing.
+ * Seeds mock orgs + admins + counselors + students for testing.
  * Run after seed:super-admin.
  *
  * Usage:
  *   node scripts/seedAccessDemo.js
  *   node scripts/seedAccessDemo.js --reset
  */
+import dns from 'dns';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+
+dns.setDefaultResultOrder('ipv4first');
 
 import { connectDB } from '../src/config/db.js';
 import { ACCESS_ROLES, ENTITY_STATUS, REGISTRATION_TYPES } from '../src/constants/roles.js';
@@ -18,6 +21,74 @@ import { Student } from '../src/models/Student.js';
 import { generateUniqueReferralCode } from '../src/services/accessHelpers.js';
 
 dotenv.config();
+
+async function upsertOrg({ name, branding, primaryColor }) {
+  let org = await Organization.findOne({ name });
+  if (!org) {
+    org = await Organization.create({
+      name,
+      branding,
+      primaryColor,
+      logoUrl: '',
+      status: ENTITY_STATUS.ACTIVE,
+    });
+    console.log('Created organization:', org.name);
+  }
+  return org;
+}
+
+async function upsertAdmin({ name, email, password, organizationId }) {
+  let admin = await AccessUser.findOne({ email });
+  if (!admin) {
+    admin = await AccessUser.create({
+      name,
+      email,
+      password: await bcrypt.hash(password, 12),
+      accessRole: ACCESS_ROLES.WL_ADMIN,
+      organizationId,
+      status: ENTITY_STATUS.ACTIVE,
+    });
+    console.log('Created org admin:', email, '/', password);
+  }
+  return admin;
+}
+
+async function upsertCounselor({ name, email, phone, password, organizationId }) {
+  let counselor = await Counselor.findOne({ email });
+  if (counselor) return counselor;
+
+  const referralCode = await generateUniqueReferralCode(name);
+  const accessUser = await AccessUser.create({
+    name,
+    email,
+    password: await bcrypt.hash(password, 12),
+    accessRole: ACCESS_ROLES.COUNSELOR,
+    organizationId,
+    status: ENTITY_STATUS.ACTIVE,
+  });
+  counselor = await Counselor.create({
+    organizationId,
+    accessUserId: accessUser._id,
+    name,
+    email,
+    phone: phone || '',
+    referralCode,
+    status: ENTITY_STATUS.ACTIVE,
+    studentCount: 0,
+  });
+  accessUser.counselorId = counselor._id;
+  await accessUser.save();
+  console.log('Created counselor:', email, '/', password, 'code:', referralCode);
+  return counselor;
+}
+
+async function upsertStudent(payload) {
+  const existing = await Student.findOne({ email: payload.email });
+  if (existing) return existing;
+  const student = await Student.create(payload);
+  console.log('Created student:', payload.email);
+  return student;
+}
 
 async function main() {
   const reset = process.argv.includes('--reset');
@@ -38,68 +109,59 @@ async function main() {
     console.log('Cleared access demo data (kept Super Admins)');
   }
 
-  let org = await Organization.findOne({ name: 'Bright Future Academy' });
-  if (!org) {
-    org = await Organization.create({
-      name: 'Bright Future Academy',
-      branding: 'BFA',
-      primaryColor: '#171717',
-      logoUrl: '',
-      status: ENTITY_STATUS.ACTIVE,
-    });
-    console.log('Created organization:', org.name);
-  }
+  const org1 = await upsertOrg({
+    name: 'Bright Future Academy',
+    branding: 'BFA',
+    primaryColor: '#171717',
+  });
+  const org2 = await upsertOrg({
+    name: 'Horizon Career Hub',
+    branding: 'HCH',
+    primaryColor: '#0f766e',
+  });
 
-  const adminEmail = 'meera@brightfuture.edu';
-  let admin = await AccessUser.findOne({ email: adminEmail });
-  if (!admin) {
-    admin = await AccessUser.create({
-      name: 'Meera Nair',
-      email: adminEmail,
-      password: await bcrypt.hash('Admin@12345', 12),
-      accessRole: ACCESS_ROLES.WL_ADMIN,
-      organizationId: org._id,
-      status: ENTITY_STATUS.ACTIVE,
-    });
-    console.log('Created org admin:', adminEmail, '/ Admin@12345');
-  }
+  await upsertAdmin({
+    name: 'Meera Nair',
+    email: 'meera@brightfuture.edu',
+    password: 'Admin@12345',
+    organizationId: org1._id,
+  });
+  await upsertAdmin({
+    name: 'Arjun Patel',
+    email: 'arjun@horizonhub.edu',
+    password: 'Admin@12345',
+    organizationId: org2._id,
+  });
 
-  const counselorEmail = 'rahul.sharma@brightfuture.edu';
-  let counselor = await Counselor.findOne({ email: counselorEmail });
-  if (!counselor) {
-    const referralCode = await generateUniqueReferralCode('Rahul Sharma');
-    const accessUser = await AccessUser.create({
-      name: 'Rahul Sharma',
-      email: counselorEmail,
-      password: await bcrypt.hash('Counselor@123', 12),
-      accessRole: ACCESS_ROLES.COUNSELOR,
-      organizationId: org._id,
-      status: ENTITY_STATUS.ACTIVE,
-    });
-    counselor = await Counselor.create({
-      organizationId: org._id,
-      accessUserId: accessUser._id,
-      name: 'Rahul Sharma',
-      email: counselorEmail,
-      phone: '+91 98765 43210',
-      referralCode,
-      status: ENTITY_STATUS.ACTIVE,
-      studentCount: 0,
-    });
-    accessUser.counselorId = counselor._id;
-    await accessUser.save();
-    console.log('Created counselor:', counselorEmail, '/ Counselor@123', 'code:', referralCode);
-  }
+  const c1 = await upsertCounselor({
+    name: 'Rahul Sharma',
+    email: 'rahul.sharma@brightfuture.edu',
+    phone: '+91 98765 43210',
+    password: 'Counselor@123',
+    organizationId: org1._id,
+  });
+  const c2 = await upsertCounselor({
+    name: 'Priya Desai',
+    email: 'priya.desai@brightfuture.edu',
+    phone: '+91 98765 43211',
+    password: 'Counselor@123',
+    organizationId: org1._id,
+  });
+  const c3 = await upsertCounselor({
+    name: 'Vikram Singh',
+    email: 'vikram.singh@horizonhub.edu',
+    phone: '+91 98765 55555',
+    password: 'Counselor@123',
+    organizationId: org2._id,
+  });
 
-  const studentEmail = 'aarav.mehta@student.in';
-  let student = await Student.findOne({ email: studentEmail });
-  if (!student) {
-    student = await Student.create({
-      organizationId: org._id,
-      assignedCounselorId: counselor._id,
-      referralCodeEntered: counselor.referralCode,
+  const students = [
+    {
+      organizationId: org1._id,
+      assignedCounselorId: c1._id,
+      referralCodeEntered: c1.referralCode,
       name: 'Aarav Mehta',
-      email: studentEmail,
+      email: 'aarav.mehta@student.in',
       phone: '+91 90001 11111',
       registrationType: REGISTRATION_TYPES.REFERRAL,
       progress: 72,
@@ -119,34 +181,99 @@ async function main() {
           at: new Date(),
         },
       ],
-    });
-    counselor.studentCount = await Student.countDocuments({ assignedCounselorId: counselor._id });
-    await counselor.save();
-    console.log('Created assigned student:', studentEmail);
-  }
-
-  const unassignedEmail = 'kabir.joshi@student.in';
-  if (!(await Student.findOne({ email: unassignedEmail }))) {
-    await Student.create({
-      organizationId: org._id,
+    },
+    {
+      organizationId: org1._id,
+      assignedCounselorId: c1._id,
+      referralCodeEntered: c1.referralCode,
+      name: 'Ananya Rao',
+      email: 'ananya.rao@student.in',
+      phone: '+91 90001 22222',
+      registrationType: REGISTRATION_TYPES.REFERRAL,
+      progress: 45,
+      assessments: [],
+      notes: [],
+    },
+    {
+      organizationId: org1._id,
+      assignedCounselorId: c2._id,
+      referralCodeEntered: c2.referralCode,
+      name: 'Ishaan Kapoor',
+      email: 'ishaan.kapoor@student.in',
+      phone: '+91 90001 33333',
+      registrationType: REGISTRATION_TYPES.REFERRAL,
+      progress: 88,
+      assessments: [
+        {
+          id: 'as_2',
+          name: 'Personality Snapshot',
+          status: 'completed',
+          score: 'Explorer · Creative',
+        },
+      ],
+      notes: [],
+    },
+    {
+      organizationId: org1._id,
       assignedCounselorId: null,
       referralCodeEntered: null,
       name: 'Kabir Joshi',
-      email: unassignedEmail,
+      email: 'kabir.joshi@student.in',
       phone: '+91 90003 33333',
       registrationType: REGISTRATION_TYPES.SKIPPED,
       progress: 12,
       assessments: [],
       notes: [],
-    });
-    console.log('Created unassigned student:', unassignedEmail);
+    },
+    {
+      organizationId: org2._id,
+      assignedCounselorId: c3._id,
+      referralCodeEntered: c3.referralCode,
+      name: 'Diya Shah',
+      email: 'diya.shah@student.in',
+      phone: '+91 90004 44444',
+      registrationType: REGISTRATION_TYPES.REFERRAL,
+      progress: 60,
+      assessments: [],
+      notes: [],
+    },
+    {
+      organizationId: org2._id,
+      assignedCounselorId: null,
+      referralCodeEntered: null,
+      name: 'Rohan Verma',
+      email: 'rohan.verma@student.in',
+      phone: '+91 90005 55555',
+      registrationType: REGISTRATION_TYPES.SKIPPED,
+      progress: 5,
+      assessments: [],
+      notes: [],
+    },
+  ];
+
+  for (const s of students) {
+    await upsertStudent(s);
   }
 
-  console.log('\nDemo ready. Organization id:', String(org._id));
-  console.log('Accounts:');
-  console.log('  Org Admin  meera@brightfuture.edu / Admin@12345');
-  console.log('  Counselor  rahul.sharma@brightfuture.edu / Counselor@123');
-  console.log('  Referral   ', counselor.referralCode);
+  for (const c of [c1, c2, c3]) {
+    c.studentCount = await Student.countDocuments({ assignedCounselorId: c._id });
+    await c.save();
+  }
+
+  console.log('\n========== MOCK USERS READY ==========');
+  console.log('Super Admin (your account): guidopiacareer@gmail.com');
+  console.log('');
+  console.log('Org Admins:');
+  console.log('  meera@brightfuture.edu / Admin@12345   (Bright Future Academy)');
+  console.log('  arjun@horizonhub.edu / Admin@12345     (Horizon Career Hub)');
+  console.log('');
+  console.log('Counselors (referral codes auto-created):');
+  console.log(`  rahul.sharma@brightfuture.edu / Counselor@123  code=${c1.referralCode}`);
+  console.log(`  priya.desai@brightfuture.edu / Counselor@123   code=${c2.referralCode}`);
+  console.log(`  vikram.singh@horizonhub.edu / Counselor@123    code=${c3.referralCode}`);
+  console.log('');
+  console.log('Students: aarav, ananya, ishaan, kabir, diya, rohan (@student.in)');
+  console.log('======================================');
   process.exit(0);
 }
 

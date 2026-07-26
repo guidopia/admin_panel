@@ -235,6 +235,7 @@ export function AccessControlPage() {
     async (form) => {
       try {
         const res = await accessApi.createCounselor({
+          organizationId: form.organizationId || organizationId || undefined,
           name: form.name,
           email: form.email,
           phone: form.phone,
@@ -245,7 +246,7 @@ export function AccessControlPage() {
         toast.error(accessApiError(err));
       }
     },
-    [load]
+    [load, organizationId]
   );
 
   const handleAddAdmin = useCallback(
@@ -381,7 +382,7 @@ export function AccessControlPage() {
   );
 
   const canManageOrganizations = isSuper;
-  const canManageCounselors = isWL;
+  const canManageCounselors = isSuper || isWL;
   const canAssignStudents = isWL;
   const isCounselorView = isCsl;
   const showOrgColumn = isSuper;
@@ -399,7 +400,7 @@ export function AccessControlPage() {
           </div>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-neutral-500">
             {isSuper
-              ? 'Platform-wide view. See all organizations, counselors, and students. Creating counselors is handled by Organization Admins only.'
+              ? 'Platform-wide view. Create organization admins, counselors (auto referral codes), and manage all organizations and students.'
               : null}
             {isWL
               ? `Organization Admin${currentOrganization ? ` for ${currentOrganization.name}` : ''}. Create counselors with referral codes and manage your students.`
@@ -541,9 +542,11 @@ export function AccessControlPage() {
       <AddCounselorModal
         open={addCounselorOpen}
         onClose={() => setAddCounselorOpen(false)}
-        organizations={organizations.filter((o) => o.id === organizationId)}
+        organizations={
+          isSuper ? organizations : organizations.filter((o) => o.id === organizationId)
+        }
         onSubmit={handleAddCounselor}
-        hideOrganizationSelect
+        hideOrganizationSelect={!isSuper}
       />
 
       <AddAdminModal
