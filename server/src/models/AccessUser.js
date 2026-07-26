@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { ACCESS_ROLE_VALUES, ACCESS_ROLES, ENTITY_STATUS } from '../constants/roles.js';
+import { createAccessModelProxy } from './accessModelFactory.js';
 
-const accessUserSchema = new mongoose.Schema(
+export const accessUserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
@@ -50,5 +51,4 @@ accessUserSchema.pre('validate', function ensureOrgScope(next) {
   return next();
 });
 
-export const AccessUser =
-  mongoose.models.AccessUser || mongoose.model('AccessUser', accessUserSchema, 'access_users');
+export const AccessUser = createAccessModelProxy('AccessUser', accessUserSchema, 'access_users');

@@ -1,6 +1,6 @@
 /**
  * Seeds the Vidhyasaarthi organization + a starter counselor (referral code)
- * into the Access Control admin database (MONGODB_URI).
+ * into the Access Control admin database (MONGODB_ADMIN).
  *
  * Usage:
  *   node scripts/seedVidhyasaarthiOrg.js
@@ -12,7 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { connectDB } from '../src/config/db.js';
+import { connectAdmin, getAdminUriFromEnv } from '../src/config/db.js';
 import { ACCESS_ROLES, ENTITY_STATUS } from '../src/constants/roles.js';
 import { AccessUser } from '../src/models/AccessUser.js';
 import { Counselor } from '../src/models/Counselor.js';
@@ -25,12 +25,13 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main() {
-  if (!process.env.MONGODB_URI) {
-    console.error('Missing MONGODB_URI');
+  const adminUri = getAdminUriFromEnv();
+  if (!adminUri) {
+    console.error('Missing MONGODB_ADMIN (Access Control database)');
     process.exit(1);
   }
 
-  await connectDB(process.env.MONGODB_URI);
+  await connectAdmin(adminUri);
   await Promise.all([
     Organization.syncIndexes(),
     AccessUser.syncIndexes(),

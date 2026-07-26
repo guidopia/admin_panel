@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { ENTITY_STATUS } from '../constants/roles.js';
+import { createAccessModelProxy } from './accessModelFactory.js';
 
-const organizationSchema = new mongoose.Schema(
+export const organizationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     branding: { type: String, trim: true, default: '' },
@@ -21,5 +22,8 @@ const organizationSchema = new mongoose.Schema(
 
 organizationSchema.index({ name: 1 });
 
-export const Organization =
-  mongoose.models.Organization || mongoose.model('Organization', organizationSchema, 'organizations');
+export const Organization = createAccessModelProxy(
+  'Organization',
+  organizationSchema,
+  'organizations'
+);

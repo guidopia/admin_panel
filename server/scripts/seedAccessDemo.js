@@ -10,9 +10,7 @@ import dns from 'dns';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 
-dns.setDefaultResultOrder('ipv4first');
-
-import { connectDB } from '../src/config/db.js';
+import { connectAdmin, getAdminUriFromEnv } from '../src/config/db.js';
 import { ACCESS_ROLES, ENTITY_STATUS, REGISTRATION_TYPES } from '../src/constants/roles.js';
 import { AccessUser } from '../src/models/AccessUser.js';
 import { Counselor } from '../src/models/Counselor.js';
@@ -20,6 +18,7 @@ import { Organization } from '../src/models/Organization.js';
 import { Student } from '../src/models/Student.js';
 import { generateUniqueReferralCode } from '../src/services/accessHelpers.js';
 
+dns.setDefaultResultOrder('ipv4first');
 dotenv.config();
 
 async function upsertOrg({ name, branding, primaryColor }) {
@@ -92,7 +91,12 @@ async function upsertStudent(payload) {
 
 async function main() {
   const reset = process.argv.includes('--reset');
-  await connectDB(process.env.MONGODB_URI);
+  const adminUri = getAdminUriFromEnv();
+  if (!adminUri) {
+    console.error('Missing MONGODB_ADMIN');
+    process.exit(1);
+  }
+  await connectAdmin(adminUri);
 
   await Promise.all([
     Organization.syncIndexes(),

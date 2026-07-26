@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { ASSESSMENT_STATUS, REGISTRATION_TYPES } from '../constants/roles.js';
+import { createAccessModelProxy } from './accessModelFactory.js';
 
 const assessmentSchema = new mongoose.Schema(
   {
@@ -25,7 +26,7 @@ const noteSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const studentSchema = new mongoose.Schema(
+export const studentSchema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -63,5 +64,4 @@ studentSchema.index({ email: 1 }, { unique: true });
 studentSchema.index({ organizationId: 1, assignedCounselorId: 1 });
 studentSchema.index({ organizationId: 1, createdAt: -1 });
 
-export const Student =
-  mongoose.models.Student || mongoose.model('Student', studentSchema, 'students');
+export const Student = createAccessModelProxy('Student', studentSchema, 'students');

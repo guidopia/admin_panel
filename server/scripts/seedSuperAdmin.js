@@ -1,10 +1,12 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 
-import { connectDB } from '../src/config/db.js';
+import dns from 'dns';
+import { connectAdmin, getAdminUriFromEnv } from '../src/config/db.js';
 import { ACCESS_ROLES, ENTITY_STATUS } from '../src/constants/roles.js';
 import { AccessUser } from '../src/models/AccessUser.js';
 
+dns.setDefaultResultOrder('ipv4first');
 dotenv.config();
 
 function getArg(flag) {
@@ -20,12 +22,13 @@ async function main() {
   const password = getArg('--password') || process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
   const name = getArg('--name') || process.env.SUPER_ADMIN_NAME || 'Guidopia Super Admin';
 
-  if (!process.env.MONGODB_URI) {
-    console.error('Missing MONGODB_URI');
+  const adminUri = getAdminUriFromEnv();
+  if (!adminUri) {
+    console.error('Missing MONGODB_ADMIN (Access Control database)');
     process.exit(1);
   }
 
-  await connectDB(process.env.MONGODB_URI);
+  await connectAdmin(adminUri);
 
   // Ensure indexes for access collections
   await AccessUser.syncIndexes();

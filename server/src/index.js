@@ -6,9 +6,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import {
+  connectAdmin,
   connectCareerBeacon,
   connectDB,
   connectVidhyasaarthi,
+  getAdminUriFromEnv,
   getVidhyasaarthiUriFromEnv,
 } from './config/db.js';
 import { initCareerBeaconModels, initVidhyasaarthiModels } from './db/platformModels.js';
@@ -62,7 +64,19 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) app.use(morgan('dev'
 let initPromise = null;
 
 async function initPlatform() {
+  // Prodigy AI — main Users admin (/login, /api/users)
   await connectDB(process.env.MONGODB_URI);
+  // eslint-disable-next-line no-console
+  console.log('Prodigy database connected (MONGODB_URI)');
+
+  // Access Control — orgs, admins, counselors, referral codes (/login/access, /api/access)
+  const adminUri = getAdminUriFromEnv();
+  if (!adminUri) {
+    throw new Error('Missing MONGODB_ADMIN — Access Control database is required');
+  }
+  await connectAdmin(adminUri);
+  // eslint-disable-next-line no-console
+  console.log('Admin Access Control database connected (MONGODB_ADMIN)');
 
   // syncIndexes is slow against Atlas — only run in local/dev, not every serverless cold start.
   if (!process.env.VERCEL) {

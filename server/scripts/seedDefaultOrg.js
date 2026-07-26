@@ -1,9 +1,11 @@
+import dns from 'dns';
 import dotenv from 'dotenv';
 
-import { connectDB } from '../src/config/db.js';
+import { connectAdmin, getAdminUriFromEnv } from '../src/config/db.js';
 import { ENTITY_STATUS } from '../src/constants/roles.js';
 import { Organization } from '../src/models/Organization.js';
 
+dns.setDefaultResultOrder('ipv4first');
 dotenv.config();
 
 function getArg(flag) {
@@ -22,12 +24,13 @@ function getArg(flag) {
 async function main() {
   const name = getArg('--name') || process.env.DEFAULT_ORG_NAME || 'Direct Signups';
 
-  if (!process.env.MONGODB_URI) {
-    console.error('Missing MONGODB_URI');
+  const adminUri = getAdminUriFromEnv();
+  if (!adminUri) {
+    console.error('Missing MONGODB_ADMIN');
     process.exit(1);
   }
 
-  await connectDB(process.env.MONGODB_URI);
+  await connectAdmin(adminUri);
   await Organization.syncIndexes();
 
   let org = await Organization.findOne({ name });

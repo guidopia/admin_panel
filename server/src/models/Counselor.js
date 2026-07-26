@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { ENTITY_STATUS } from '../constants/roles.js';
+import { createAccessModelProxy } from './accessModelFactory.js';
 
-const counselorSchema = new mongoose.Schema(
+export const counselorSchema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -43,5 +44,4 @@ counselorSchema.index({ referralCode: 1 }, { unique: true });
 counselorSchema.index({ email: 1 }, { unique: true });
 counselorSchema.index({ organizationId: 1, status: 1 });
 
-export const Counselor =
-  mongoose.models.Counselor || mongoose.model('Counselor', counselorSchema, 'counselors');
+export const Counselor = createAccessModelProxy('Counselor', counselorSchema, 'counselors');
