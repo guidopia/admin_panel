@@ -115,12 +115,20 @@ async function initPlatform() {
 }
 
 function ensureReady() {
-  if (!initPromise) initPromise = initPlatform();
+  if (!initPromise) {
+    initPromise = initPlatform().catch((err) => {
+      initPromise = null; // allow retry on next request after Atlas/network fix
+      throw err;
+    });
+  }
   return initPromise;
 }
 
+// Health check does not need DB (useful on Vercel while fixing Atlas whitelist).
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
 // Ensure DB is ready before handling API traffic (needed on Vercel cold starts).
-app.use(async (req, res, next) => {
+app.use('/api', async (req, res, next) => {
   try {
     await ensureReady();
     next();
@@ -128,8 +136,6 @@ app.use(async (req, res, next) => {
     next(err);
   }
 });
-
-app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

@@ -16,9 +16,16 @@ export async function connectDB(mongoUri) {
     return mongoose.connection;
   }
 
-  await mongoose.connect(mongoUri, {
-    autoIndex: false,
-  });
+  try {
+    await mongoose.connect(mongoUri, {
+      autoIndex: false,
+      serverSelectionTimeoutMS: 12000,
+    });
+  } catch (err) {
+    const e = new Error(atlasWhitelistHint(err));
+    e.statusCode = 503;
+    throw e;
+  }
 
   return mongoose.connection;
 }
@@ -38,6 +45,23 @@ export function getAdminUriFromEnv() {
   );
 }
 
+function atlasWhitelistHint(err) {
+  const msg = String(err?.message || err || '');
+  if (
+    err?.name === 'MongooseServerSelectionError' ||
+    msg.includes('whitelist') ||
+    msg.includes('ServerSelectionError') ||
+    msg.includes('Could not connect to any servers')
+  ) {
+    return (
+      `${msg} — On MongoDB Atlas → Network Access, add IP 0.0.0.0/0 ` +
+      `(allow from anywhere) so Vercel can connect. Do this for BOTH ` +
+      `Prodigy (MONGODB_URI) and Admin (MONGODB_ADMIN) clusters.`
+    );
+  }
+  return msg;
+}
+
 export async function connectAdmin(mongoUri) {
   const uri = (mongoUri || getAdminUriFromEnv() || '').trim();
   if (!uri) {
@@ -48,16 +72,30 @@ export async function connectAdmin(mongoUri) {
 
   if (adminConnection) {
     if (adminConnection.readyState === 1) return adminConnection;
-    await adminConnection.asPromise();
-    return adminConnection;
+    try {
+      await adminConnection.asPromise();
+      return adminConnection;
+    } catch (err) {
+      adminConnection = null;
+      const e = new Error(atlasWhitelistHint(err));
+      e.statusCode = 503;
+      throw e;
+    }
   }
 
-  adminConnection = mongoose.createConnection(uri, {
-    autoIndex: false,
-  });
-
-  await adminConnection.asPromise();
-  return adminConnection;
+  try {
+    adminConnection = mongoose.createConnection(uri, {
+      autoIndex: false,
+      serverSelectionTimeoutMS: 12000,
+    });
+    await adminConnection.asPromise();
+    return adminConnection;
+  } catch (err) {
+    adminConnection = null;
+    const e = new Error(atlasWhitelistHint(err));
+    e.statusCode = 503;
+    throw e;
+  }
 }
 
 export function getAdminConnection() {
