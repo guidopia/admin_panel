@@ -9,6 +9,13 @@ export async function connectDB(mongoUri) {
     throw err;
   }
 
+  // Reuse connection across serverless invocations.
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  if (mongoose.connection.readyState === 2) {
+    await mongoose.connection.asPromise();
+    return mongoose.connection;
+  }
+
   await mongoose.connect(mongoUri, {
     autoIndex: false,
   });
@@ -22,6 +29,12 @@ let vidhyasaarthiConnection = null;
 export async function connectCareerBeacon(mongoUri) {
   if (!mongoUri?.trim()) return null;
 
+  if (careerBeaconConnection) {
+    if (careerBeaconConnection.readyState === 1) return careerBeaconConnection;
+    await careerBeaconConnection.asPromise();
+    return careerBeaconConnection;
+  }
+
   careerBeaconConnection = mongoose.createConnection(mongoUri.trim(), {
     autoIndex: false,
   });
@@ -32,6 +45,12 @@ export async function connectCareerBeacon(mongoUri) {
 
 export async function connectVidhyasaarthi(mongoUri) {
   if (!mongoUri?.trim()) return null;
+
+  if (vidhyasaarthiConnection) {
+    if (vidhyasaarthiConnection.readyState === 1) return vidhyasaarthiConnection;
+    await vidhyasaarthiConnection.asPromise();
+    return vidhyasaarthiConnection;
+  }
 
   vidhyasaarthiConnection = mongoose.createConnection(mongoUri.trim(), {
     autoIndex: false,
@@ -48,4 +67,3 @@ export function getVidhyasaarthiUriFromEnv() {
     (process.env.MONGODB_URI_VIDHYASARTHI || '').trim()
   );
 }
-

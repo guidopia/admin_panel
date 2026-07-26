@@ -50,26 +50,18 @@ app.use(
         return cb(null, true);
       }
 
+      // Vercel preview / production frontends when CORS_ORIGIN lists them.
       return cb(new Error(`CORS blocked origin: ${origin}`));
     },
     credentials: true,
   })
 );
 
-if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) app.use(morgan('dev'));
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+let initPromise = null;
 
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/access', accessRoutes);
-
-app.use(notFound);
-app.use(errorHandler);
-
-const port = Number(process.env.PORT || 5000);
-
-async function start() {
+async function initPlatform() {
   await connectDB(process.env.MONGODB_URI);
 
   await Promise.all([
@@ -100,7 +92,41 @@ async function start() {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled');
   }
+}
 
+function ensureReady() {
+  if (!initPromise) initPromise = initPlatform();
+  return initPromise;
+}
+
+// Ensure DB is ready before handling API traffic (needed on Vercel cold starts).
+app.use(async (req, res, next) => {
+  try {
+    await ensureReady();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/access', accessRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
+
+// Required for Vercel (@vercel/node): export the Express app as the serverless handler.
+export default app;
+
+const isServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'test';
+
+async function start() {
+  await ensureReady();
+
+  const port = Number(process.env.PORT || 5000);
   const server = http.createServer(app);
   server.listen(port, () => {
     // eslint-disable-next-line no-console
@@ -108,9 +134,10 @@ async function start() {
   });
 }
 
-start().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('Fatal server startup error:', err);
-  process.exit(1);
-});
-
+if (!isServerless) {
+  start().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('Fatal server startup error:', err);
+    process.exit(1);
+  });
+}
