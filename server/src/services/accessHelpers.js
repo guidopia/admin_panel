@@ -8,7 +8,7 @@ import { Student } from '../models/Student.js';
 import { ApiError } from '../utils/apiError.js';
 import { buildReferralCodeCandidate, normalizeReferralCode } from '../utils/referralCode.js';
 
-const BCRYPT_ROUNDS = 12;
+const BCRYPT_ROUNDS = 10;
 
 export async function hashPassword(plain) {
   return bcrypt.hash(plain, BCRYPT_ROUNDS);

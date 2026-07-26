@@ -136,7 +136,7 @@ export function FieldRow({ label, value, mono }) {
   );
 }
 
-export function EmptyState({ title, description }) {
+export function EmptyState({ title, description, action = null }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
       <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl border border-neutral-200 bg-neutral-50 text-neutral-400">
@@ -144,6 +144,7 @@ export function EmptyState({ title, description }) {
       </div>
       <div className="text-[14px] font-semibold text-neutral-900">{title}</div>
       <p className="mt-1 max-w-sm text-[13px] text-neutral-500">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

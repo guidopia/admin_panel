@@ -64,12 +64,15 @@ let initPromise = null;
 async function initPlatform() {
   await connectDB(process.env.MONGODB_URI);
 
-  await Promise.all([
-    Organization.syncIndexes(),
-    AccessUser.syncIndexes(),
-    Counselor.syncIndexes(),
-    Student.syncIndexes(),
-  ]);
+  // syncIndexes is slow against Atlas — only run in local/dev, not every serverless cold start.
+  if (!process.env.VERCEL) {
+    await Promise.all([
+      Organization.syncIndexes(),
+      AccessUser.syncIndexes(),
+      Counselor.syncIndexes(),
+      Student.syncIndexes(),
+    ]);
+  }
 
   const careerBeaconUri = (process.env.MONGODB_URI_CAREER_BEACON || '').trim();
   if (careerBeaconUri) {

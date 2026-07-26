@@ -1,21 +1,69 @@
 import { ACCESS_ROLES, ENTITY_STATUS } from '../constants/roles.js';
+import { AccessUser } from '../models/AccessUser.js';
+import { Counselor } from '../models/Counselor.js';
 import { Organization } from '../models/Organization.js';
+import { Student } from '../models/Student.js';
 import { ApiError } from '../utils/apiError.js';
 import { serializeOrganization } from '../utils/serializers.js';
 import { getOrganizationCounts } from './accessHelpers.js';
+
+function toCountMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    map.set(String(row._id), row.count || 0);
+  }
+  return map;
+}
+
+/** One aggregation pass per collection instead of N+1 count queries. */
+async function getCountsByOrganizationIds(orgIds) {
+  if (!orgIds.length) {
+    return { admins: new Map(), counselors: new Map(), students: new Map() };
+  }
+
+  const [adminRows, counselorRows, studentRows] = await Promise.all([
+    AccessUser.aggregate([
+      {
+        $match: {
+          organizationId: { $in: orgIds },
+          accessRole: ACCESS_ROLES.WL_ADMIN,
+        },
+      },
+      { $group: { _id: '$organizationId', count: { $sum: 1 } } },
+    ]),
+    Counselor.aggregate([
+      { $match: { organizationId: { $in: orgIds } } },
+      { $group: { _id: '$organizationId', count: { $sum: 1 } } },
+    ]),
+    Student.aggregate([
+      { $match: { organizationId: { $in: orgIds } } },
+      { $group: { _id: '$organizationId', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  return {
+    admins: toCountMap(adminRows),
+    counselors: toCountMap(counselorRows),
+    students: toCountMap(studentRows),
+  };
+}
 
 export async function listOrganizations({ status } = {}) {
   const filter = {};
   if (status && status !== 'all') filter.status = status;
 
   const orgs = await Organization.find(filter).sort({ createdAt: -1 }).lean();
-  const withCounts = await Promise.all(
-    orgs.map(async (org) => {
-      const counts = await getOrganizationCounts(org._id);
-      return serializeOrganization(org, counts);
-    })
-  );
-  return withCounts;
+  const orgIds = orgs.map((org) => org._id);
+  const counts = await getCountsByOrganizationIds(orgIds);
+
+  return orgs.map((org) => {
+    const id = String(org._id);
+    return serializeOrganization(org, {
+      adminCount: counts.admins.get(id) || 0,
+      counselorCount: counts.counselors.get(id) || 0,
+      studentCount: counts.students.get(id) || 0,
+    });
+  });
 }
 
 export async function getOrganizationById(id) {
@@ -60,8 +108,12 @@ export async function toggleOrganizationStatus(id) {
   if (!org) throw new ApiError(404, 'Organization not found');
   org.status = org.status === ENTITY_STATUS.ACTIVE ? ENTITY_STATUS.INACTIVE : ENTITY_STATUS.ACTIVE;
   await org.save();
-  const counts = await getOrganizationCounts(org._id);
-  return serializeOrganization(org, counts);
+  // Skip recount on toggle — status flip must be instant; counts unchanged.
+  return serializeOrganization(org.toObject(), {
+    adminCount: undefined,
+    counselorCount: undefined,
+    studentCount: undefined,
+  });
 }
 
 export { ACCESS_ROLES };

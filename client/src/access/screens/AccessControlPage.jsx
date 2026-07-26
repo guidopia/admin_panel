@@ -32,9 +32,10 @@ import {
   OrganizationFormModal,
 } from '../ui/FormModals.jsx';
 import { OrganizationAnalyticsPanel } from '../ui/OrganizationAnalyticsPanel.jsx';
-import { OrganizationProfilePanel, ReferralSystemPanel } from '../ui/OrganizationProfilePanel.jsx';
+import { OrganizationProfilePanel } from '../ui/OrganizationProfilePanel.jsx';
 import { OrganizationsPanel } from '../ui/OrganizationsPanel.jsx';
 import { ReferralCodeSuccessModal, RegenerateReferralModal } from '../ui/ReferralModals.jsx';
+import { ReferralSystemPanel } from '../ui/ReferralSystemPanel.jsx';
 import { StudentsPanel } from '../ui/StudentsPanel.jsx';
 
 const SUPER_ADMIN_TABS = [
@@ -152,53 +153,82 @@ export function AccessControlPage() {
     setActiveTab(initialTabForRole(accessRole));
   }, [accessRole]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const load = useCallback(async ({ silent = false, withAnalytics = true } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       if (isSuper) {
-        const [analyticsData, orgs, adminList, counselorList, studentList] = await Promise.all([
-          accessApi.getAnalytics(),
+        const requests = [
           accessApi.listOrganizations(),
           accessApi.listAdmins(),
           accessApi.listCounselors(),
           accessApi.listStudents(),
-        ]);
-        setAnalytics(analyticsData);
-        setOrganizations(orgs);
-        setAdmins(adminList);
-        setCounselors(counselorList);
-        setStudents(studentList);
+        ];
+        if (withAnalytics) requests.unshift(accessApi.getAnalytics());
+        const results = await Promise.all(requests);
+        if (withAnalytics) {
+          const [analyticsData, orgs, adminList, counselorList, studentList] = results;
+          setAnalytics(analyticsData);
+          setOrganizations(orgs);
+          setAdmins(adminList);
+          setCounselors(counselorList);
+          setStudents(studentList);
+        } else {
+          const [orgs, adminList, counselorList, studentList] = results;
+          setOrganizations(orgs);
+          setAdmins(adminList);
+          setCounselors(counselorList);
+          setStudents(studentList);
+        }
       } else if (isWL) {
-        const [analyticsData, org, counselorList, studentList] = await Promise.all([
-          accessApi.getAnalytics(),
+        const requests = [
           accessApi.getCurrentOrganization(),
           accessApi.listCounselors(),
           accessApi.listStudents(),
-        ]);
-        setAnalytics(analyticsData);
-        setOrganizations(org ? [org] : []);
-        setCounselors(counselorList);
-        setStudents(studentList);
+        ];
+        if (withAnalytics) requests.unshift(accessApi.getAnalytics());
+        const results = await Promise.all(requests);
+        if (withAnalytics) {
+          const [analyticsData, org, counselorList, studentList] = results;
+          setAnalytics(analyticsData);
+          setOrganizations(org ? [org] : []);
+          setCounselors(counselorList);
+          setStudents(studentList);
+        } else {
+          const [org, counselorList, studentList] = results;
+          setOrganizations(org ? [org] : []);
+          setCounselors(counselorList);
+          setStudents(studentList);
+        }
       } else {
-        const [analyticsData, counselorList, studentList] = await Promise.all([
-          accessApi.getAnalytics(),
-          accessApi.listCounselors(),
-          accessApi.listStudents(),
-        ]);
-        setAnalytics(analyticsData);
-        setCounselors(counselorList);
-        setStudents(studentList);
+        const requests = [accessApi.listCounselors(), accessApi.listStudents()];
+        if (withAnalytics) requests.unshift(accessApi.getAnalytics());
+        const results = await Promise.all(requests);
+        if (withAnalytics) {
+          const [analyticsData, counselorList, studentList] = results;
+          setAnalytics(analyticsData);
+          setCounselors(counselorList);
+          setStudents(studentList);
+        } else {
+          const [counselorList, studentList] = results;
+          setCounselors(counselorList);
+          setStudents(studentList);
+        }
       }
     } catch (err) {
-      setError(accessApiError(err, 'Failed to load access control data'));
+      if (!silent) setError(accessApiError(err, 'Failed to load access control data'));
+      else toast.error(accessApiError(err, 'Refresh failed'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [isSuper, isWL]);
 
+  const refreshQuiet = useCallback(() => load({ silent: true, withAnalytics: false }), [load]);
+
   useEffect(() => {
-    load();
+    load({ silent: false, withAnalytics: true });
   }, [load]);
 
   const currentOrganization = useMemo(() => {
@@ -241,12 +271,13 @@ export function AccessControlPage() {
           phone: form.phone,
         });
         setCreatedCounselor({ ...res.counselor, temporaryPassword: res.temporaryPassword });
-        await load();
+        if (res.counselor) setCounselors((prev) => [res.counselor, ...prev]);
+        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load, organizationId]
+    [organizationId, refreshQuiet]
   );
 
   const handleAddAdmin = useCallback(
@@ -254,12 +285,14 @@ export function AccessControlPage() {
       try {
         const res = await accessApi.createAdmin(form);
         setCreatedAdmin({ ...res.admin, temporaryPassword: res.temporaryPassword });
-        await load();
+        if (res.admin) setAdmins((prev) => [res.admin, ...prev]);
+        toast.success('Admin created');
+        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load]
+    [refreshQuiet]
   );
 
   const handleEditCounselor = useCallback(
@@ -267,13 +300,13 @@ export function AccessControlPage() {
       try {
         const updated = await accessApi.updateCounselor(id, form);
         setDetailCounselor((prev) => (prev?.id === id ? updated : prev));
+        setCounselors((prev) => prev.map((c) => (c.id === id ? updated : c)));
         toast.success('Counselor updated');
-        await load();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load]
+    []
   );
 
   const handleDeleteCounselor = useCallback(
@@ -282,13 +315,14 @@ export function AccessControlPage() {
         await accessApi.deleteCounselor(counselor.id);
         setDeleteCounselor(null);
         setDetailCounselor(null);
+        setCounselors((prev) => prev.filter((c) => c.id !== counselor.id));
         toast.success(`${counselor.name} deleted · assigned students are now unassigned`);
-        await load();
+        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load]
+    [refreshQuiet]
   );
 
   const handleRegenerateCode = useCallback(
@@ -296,14 +330,14 @@ export function AccessControlPage() {
       try {
         const updated = await accessApi.regenerateReferralCode(counselor.id);
         setDetailCounselor((prev) => (prev?.id === counselor.id ? updated : prev));
+        setCounselors((prev) => prev.map((c) => (c.id === counselor.id ? updated : c)));
         setRegenerateCounselor(null);
         toast.success(`New referral code: ${updated.referralCode}`);
-        await load();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load]
+    []
   );
 
   const handleAssignCounselor = useCallback(
@@ -311,75 +345,74 @@ export function AccessControlPage() {
       try {
         const updated = await accessApi.assignStudent(studentId, counselorIdValue);
         setDetailStudent((prev) => (prev?.id === studentId ? updated : prev));
+        setStudents((prev) => prev.map((s) => (s.id === studentId ? updated : s)));
         const name = counselors.find((c) => c.id === counselorIdValue)?.name;
         toast.success(`Student assigned to ${name || 'counselor'}`);
-        await load();
+        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [load, counselors]
+    [counselors, refreshQuiet]
   );
 
-  const handleAddNote = useCallback(
-    async (studentId, text) => {
-      try {
-        const updated = await accessApi.addStudentNote(studentId, text);
-        setDetailStudent((prev) => (prev?.id === studentId ? updated : prev));
-        toast.success('Note added');
-        await load();
-      } catch (err) {
-        toast.error(accessApiError(err));
-      }
-    },
-    [load]
-  );
+  const handleAddNote = useCallback(async (studentId, text) => {
+    try {
+      const updated = await accessApi.addStudentNote(studentId, text);
+      setDetailStudent((prev) => (prev?.id === studentId ? updated : prev));
+      setStudents((prev) => prev.map((s) => (s.id === studentId ? updated : s)));
+      toast.success('Note added');
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
 
   const handleSaveOrganization = useCallback(
     async (form) => {
       try {
         if (orgForm.mode === 'edit' && orgForm.organization) {
-          await accessApi.updateOrganization(orgForm.organization.id, {
+          const updated = await accessApi.updateOrganization(orgForm.organization.id, {
             name: form.name.trim(),
             branding: form.branding.trim(),
             primaryColor: form.primaryColor,
             logoUrl: form.logoUrl.trim(),
             status: form.status,
           });
+          setOrganizations((prev) =>
+            prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+          );
           toast.success('Organization updated');
         } else {
-          await accessApi.createOrganization({
+          const created = await accessApi.createOrganization({
             name: form.name.trim(),
             branding: form.branding.trim(),
             primaryColor: form.primaryColor,
             logoUrl: form.logoUrl.trim(),
           });
+          setOrganizations((prev) => [created, ...prev]);
           toast.success('Organization created');
         }
-        await load();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [orgForm, load]
+    [orgForm]
   );
 
-  const handleToggleOrganization = useCallback(
-    async (organization) => {
-      try {
-        await accessApi.toggleOrganizationStatus(organization.id);
-        setToggleOrg(null);
-        setDetailOrganization(null);
-        toast.success(
-          `Organization ${organization.status === 'active' ? 'deactivated' : 'activated'}`
-        );
-        await load();
-      } catch (err) {
-        toast.error(accessApiError(err));
-      }
-    },
-    [load]
-  );
+  const handleToggleOrganization = useCallback(async (organization) => {
+    try {
+      const updated = await accessApi.toggleOrganizationStatus(organization.id);
+      const nextStatus = updated.status;
+      setOrganizations((prev) =>
+        prev.map((o) => (o.id === organization.id ? { ...o, status: nextStatus } : o))
+      );
+      setToggleOrg(null);
+      setDetailOrganization(null);
+      toast.success(`Organization ${organization.status === 'active' ? 'deactivated' : 'activated'}`);
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
 
   const canManageOrganizations = isSuper;
   const canManageCounselors = isSuper || isWL;
@@ -426,7 +459,7 @@ export function AccessControlPage() {
       </header>
 
       {error ? (
-        <ErrorState message={error} onRetry={load} />
+        <ErrorState message={error} onRetry={() => load({ silent: false, withAnalytics: true })} />
       ) : booting ? (
         <LoadingState />
       ) : (
@@ -522,7 +555,16 @@ export function AccessControlPage() {
             />
           ) : null}
 
-          {activeTab === 'referrals' && isSuper ? <ReferralSystemPanel /> : null}
+          {activeTab === 'referrals' && isSuper ? (
+            <ReferralSystemPanel
+              counselors={counselors}
+              students={students}
+              organizations={organizations}
+              onAddCounselor={() => setAddCounselorOpen(true)}
+              onRegenerate={setRegenerateCounselor}
+              canManage={canManageCounselors}
+            />
+          ) : null}
 
           {activeTab === 'analytics' && isSuper && analytics ? <AnalyticsPanel stats={analytics} /> : null}
 

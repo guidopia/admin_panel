@@ -79,46 +79,4 @@ export function OrganizationProfilePanel({ organization, onEdit, analytics }) {
   );
 }
 
-export function ReferralSystemPanel() {
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="surface p-5">
-          <div className="mb-1 text-[14px] font-semibold text-neutral-900">Case 1 · Student enters referral code</div>
-          <p className="mb-4 text-[12.5px] text-neutral-500">Example: student enters <span className="font-mono font-semibold">RAH582</span></p>
-          <ol className="space-y-2 text-[12.5px] text-neutral-700">
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">1.</span> System finds counselor with matching code</li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">2.</span> Sets <span className="font-mono">assignedCounselorId</span></li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">3.</span> Visible to white-label admin + assigned counselor</li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">4.</span> Not visible to other counselors</li>
-          </ol>
-        </div>
-
-        <div className="surface p-5">
-          <div className="mb-1 text-[14px] font-semibold text-neutral-900">Case 2 · Student skips referral code</div>
-          <p className="mb-4 text-[12.5px] text-neutral-500"><span className="font-mono">assignedCounselorId = NULL</span></p>
-          <ol className="space-y-2 text-[12.5px] text-neutral-700">
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">1.</span> Student registers without a code</li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">2.</span> Visible only to white-label admin</li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">3.</span> No counselor can see them yet</li>
-            <li className="flex gap-2"><span className="font-semibold text-neutral-400">4.</span> Admin assigns counselor manually later</li>
-          </ol>
-        </div>
-      </div>
-
-      <div className="surface p-5">
-        <div className="mb-3 text-[14px] font-semibold text-neutral-900">Manual assignment & reassignment</div>
-        <div className="grid gap-3 md:grid-cols-2 text-[12.5px] text-neutral-700">
-          <div className="rounded-xl border border-neutral-200 px-3 py-3">
-            <div className="font-medium text-neutral-900">Manual assignment</div>
-            <p className="mt-1 text-neutral-500">Admin opens student → Assign counselor → Select → Save. Student immediately appears in counselor dashboard.</p>
-          </div>
-          <div className="rounded-xl border border-neutral-200 px-3 py-3">
-            <div className="font-medium text-neutral-900">Reassignment</div>
-            <p className="mt-1 text-neutral-500">Admin changes counselor. Old counselor loses access; new counselor gains access immediately.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+export { ReferralSystemPanel } from './ReferralSystemPanel.jsx';
