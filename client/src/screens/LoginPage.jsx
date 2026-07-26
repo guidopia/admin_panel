@@ -3,34 +3,59 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import { api, setApiAuthToken } from '../lib/api.js';
+import { accessApi, accessApiError } from '../access/lib/accessApi.js';
 import { useAuth } from '../state/auth/AuthContext.jsx';
 
 export function LoginPage() {
-  const { token, setAuth } = useAuth();
+  const { token, user, setAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = useMemo(() => location.state?.from?.pathname || '/users', [location.state]);
+  const from = useMemo(() => location.state?.from?.pathname || '/', [location.state]);
 
   useEffect(() => {
-    if (token) navigate(from, { replace: true });
-  }, [token, from, navigate]);
+    if (!token) return;
+    if (user?.accessRole) navigate('/access', { replace: true });
+    else navigate(from === '/access' ? '/users' : from, { replace: true });
+  }, [token, user, from, navigate]);
 
   async function onSubmit(e) {
     e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      toast.error('Email and password are required');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await api.post('/api/auth/login', { email, password });
+      // 1) Access Control (Super Admin / Org Admin / Counselor) — preferred
+      try {
+        const data = await accessApi.login(cleanEmail, password);
+        setAuth(data);
+        setApiAuthToken(data.token);
+        toast.success('Signed in as Access Control');
+        navigate('/access', { replace: true });
+        return;
+      } catch (accessErr) {
+        const status = accessErr?.response?.status;
+        // Only fall through to Prodigy login on bad credentials
+        if (status !== 401 && status !== 403) {
+          throw accessErr;
+        }
+      }
+
+      // 2) Prodigy Users admin (/api/auth/login)
+      const res = await api.post('/api/auth/login', { email: cleanEmail, password });
       setAuth(res.data);
       setApiAuthToken(res.data.token);
       toast.success('Signed in');
-      navigate(from, { replace: true });
+      navigate(from === '/access' || from === '/' ? '/users' : from, { replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Login failed';
-      toast.error(msg);
+      toast.error(accessApiError(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }
@@ -53,31 +78,28 @@ export function LoginPage() {
 
         <div className="surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <div className="mb-5">
-            <div className="text-[15px] font-semibold text-neutral-900">Sign in to your workspace</div>
+            <div className="text-[15px] font-semibold text-neutral-900">Sign in</div>
             <div className="mt-0.5 text-[12.5px] text-neutral-500">
-              Use your admin credentials to continue.
+              Super Admin / org admins sign in here for Access Control (orgs, counselors, referral
+              codes). Prodigy Users admins also work on this page.
             </div>
           </div>
 
           <form className="space-y-3.5" onSubmit={onSubmit}>
             <div>
-              <label className="mb-1 block text-[12px] font-medium text-neutral-700">
-                Email
-              </label>
+              <label className="mb-1 block text-[12px] font-medium text-neutral-700">Email</label>
               <input
                 className="input h-9"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 autoComplete="email"
-                placeholder="you@company.com"
+                placeholder="guidopiacareer@gmail.com"
                 required
               />
             </div>
             <div>
-              <label className="mb-1 block text-[12px] font-medium text-neutral-700">
-                Password
-              </label>
+              <label className="mb-1 block text-[12px] font-medium text-neutral-700">Password</label>
               <input
                 className="input h-9"
                 value={password}
@@ -100,11 +122,10 @@ export function LoginPage() {
         </div>
 
         <div className="mt-4 space-y-2 text-center text-[11.5px] text-neutral-400">
-          <div>Protected admin area · MongoDB Atlas</div>
           <div>
-            Access Control login?{' '}
+            Dedicated Access Control page:{' '}
             <Link to="/login/access" className="font-medium text-neutral-600 hover:text-neutral-900">
-              Use role portal
+              /login/access
             </Link>
           </div>
         </div>

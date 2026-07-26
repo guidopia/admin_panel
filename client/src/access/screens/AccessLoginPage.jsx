@@ -21,19 +21,27 @@ export function AccessLoginPage() {
 
   async function onSubmit(e) {
     e.preventDefault();
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
       toast.error('Email and password are required');
       return;
     }
     setLoading(true);
     try {
-      const data = await accessApi.login(email.trim(), password);
+      const data = await accessApi.login(cleanEmail, password);
       setAuth(data);
       setApiAuthToken(data.token);
       toast.success('Signed in');
       navigate('/access', { replace: true });
     } catch (err) {
-      toast.error(accessApiError(err, 'Invalid email or password'));
+      const msg = accessApiError(err, 'Invalid email or password');
+      const network =
+        !err?.response && (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK');
+      toast.error(
+        network
+          ? 'Cannot reach API at localhost:5000 — start the admin server (npm run dev in server/)'
+          : msg
+      );
     } finally {
       setLoading(false);
     }
@@ -58,8 +66,11 @@ export function AccessLoginPage() {
           <div className="mb-4">
             <div className="text-[15px] font-semibold text-neutral-900">Sign in</div>
             <p className="mt-0.5 text-[12.5px] text-neutral-500">
-              Use your Access Control credentials. Super Admins, Organization Admins, and Counselors
-              all sign in here — your role is determined by your account.
+              Super Admin, Organization Admin, and Counselor login. After sign-in you get orgs,
+              counselors, referral codes, and students.
+            </p>
+            <p className="mt-2 rounded-lg bg-neutral-50 px-2.5 py-2 font-mono text-[11px] text-neutral-600">
+              Super Admin: guidopiacareer@gmail.com
             </p>
           </div>
 

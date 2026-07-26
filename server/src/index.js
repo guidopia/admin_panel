@@ -47,8 +47,11 @@ app.use(
       if (allowAny) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
 
-      // Dev convenience: allow any localhost port.
-      if (process.env.NODE_ENV !== 'production' && /^http:\/\/localhost:\d+$/.test(origin)) {
+      // Dev convenience: allow any localhost / 127.0.0.1 port (Vite often uses 127.0.0.1).
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
+      ) {
         return cb(null, true);
       }
 
