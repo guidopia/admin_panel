@@ -22,6 +22,7 @@ import accessRoutes from './routes/accessRoutes.js';
 import { AccessUser } from './models/AccessUser.js';
 import { Counselor } from './models/Counselor.js';
 import { Organization } from './models/Organization.js';
+import { ReferralCode } from './models/ReferralCode.js';
 import { Student } from './models/Student.js';
 
 const app = express();
@@ -87,6 +88,7 @@ async function initPlatform() {
       Organization.syncIndexes(),
       AccessUser.syncIndexes(),
       Counselor.syncIndexes(),
+      ReferralCode.syncIndexes(),
       Student.syncIndexes(),
     ]);
   }

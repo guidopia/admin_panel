@@ -2,16 +2,16 @@ import mongoose from 'mongoose';
 
 import { ACCESS_ROLES, ENTITY_STATUS, REGISTRATION_TYPES } from '../constants/roles.js';
 import { Counselor } from '../models/Counselor.js';
-import { Organization } from '../models/Organization.js';
 import { Student } from '../models/Student.js';
 import { ApiError } from '../utils/apiError.js';
-import { isValidReferralCodeFormat, normalizeReferralCode } from '../utils/referralCode.js';
+import {
+  isReferralCodeProvided,
+} from '../utils/referralCode.js';
 import { serializeCounselor, serializeStudent } from '../utils/serializers.js';
 import {
-  assertOrganizationExists,
-  findCounselorByReferralCode,
+  adjustCounselorStudentCount,
   hashPassword,
-  refreshCounselorStudentCount,
+  resolveActiveReferral,
   resolveDefaultOrganizationId,
 } from './accessHelpers.js';
 
@@ -87,41 +87,39 @@ function assertStudentVisible(accessUser, student) {
 }
 
 /**
- * Public / admin student registration.
- * With referral code → auto-assign counselor + org.
- * Without → requires organizationId; remains unassigned.
+ * Website / S2S student registration.
+ * - No code → DEFAULT_ORGANIZATION_ID, unassigned.
+ * - Code provided + valid → assign counselor; snapshot referredCounselorId + referralCodeEntered.
+ * - Code provided + invalid → 400 hard-block (do not create student).
  */
 export async function registerStudent(payload) {
   const email = payload.email.toLowerCase().trim();
   const existing = await Student.findOne({ email });
   if (existing) throw new ApiError(409, 'Email already in use');
 
-  let organizationId = payload.organizationId || null;
+  let organizationId = null;
   let assignedCounselorId = null;
+  let referredCounselorId = null;
   let referralCodeEntered = null;
+  let referralCodeId = null;
   let registrationType = REGISTRATION_TYPES.SKIPPED;
 
-  if (payload.referralCode) {
-    const code = normalizeReferralCode(payload.referralCode);
-    const counselor = await findCounselorByReferralCode(code);
-    if (!counselor) throw new ApiError(400, 'Invalid referral code');
-
-    const org = await Organization.findById(counselor.organizationId);
-    if (!org || org.status !== ENTITY_STATUS.ACTIVE) {
-      throw new ApiError(400, 'Organization is not accepting registrations');
+  if (isReferralCodeProvided(payload.referralCode)) {
+    const resolved = await resolveActiveReferral(payload.referralCode);
+    if (!resolved.ok) {
+      const err = new ApiError(400, resolved.message);
+      err.reason = resolved.reason;
+      throw err;
     }
 
-    organizationId = counselor.organizationId;
-    assignedCounselorId = counselor._id;
-    referralCodeEntered = code;
+    organizationId = resolved.counselor.organizationId;
+    assignedCounselorId = resolved.counselor._id;
+    referredCounselorId = resolved.counselor._id; // immutable attribution snapshot
+    referralCodeEntered = resolved.code;
+    referralCodeId = resolved.row._id;
     registrationType = REGISTRATION_TYPES.REFERRAL;
   } else {
-    if (!organizationId) {
-      // Website direct signups: land in the default org as unassigned.
-      organizationId = await resolveDefaultOrganizationId();
-    } else {
-      await assertOrganizationExists(organizationId);
-    }
+    organizationId = await resolveDefaultOrganizationId();
   }
 
   const passwordHash = payload.password ? await hashPassword(payload.password) : '';
@@ -129,7 +127,9 @@ export async function registerStudent(payload) {
   const student = await Student.create({
     organizationId,
     assignedCounselorId,
+    referredCounselorId,
     referralCodeEntered,
+    referralCodeId,
     name: payload.name,
     email,
     phone: payload.phone || '',
@@ -141,7 +141,7 @@ export async function registerStudent(payload) {
   });
 
   if (assignedCounselorId) {
-    await refreshCounselorStudentCount(assignedCounselorId);
+    await adjustCounselorStudentCount(assignedCounselorId, 1);
   }
 
   return serializeStudent(student);
@@ -178,17 +178,26 @@ export async function assignStudent(accessUser, studentId, counselorId) {
     }
 
     student.assignedCounselorId = counselor._id;
-    if (!student.referralCodeEntered) {
+    // Do NOT overwrite referredCounselorId — attribution snapshot stays immutable.
+    // Only fill referralCodeEntered for display if empty (manual assign without prior referral).
+    if (!student.referralCodeEntered && counselor.referralCode) {
       student.referralCodeEntered = counselor.referralCode;
-      student.registrationType = REGISTRATION_TYPES.REFERRAL;
+      if (!student.registrationType || student.registrationType === REGISTRATION_TYPES.SKIPPED) {
+        student.registrationType = REGISTRATION_TYPES.REFERRAL;
+      }
+      if (!student.referredCounselorId) {
+        student.referredCounselorId = counselor._id;
+      }
     }
   }
 
   await student.save();
 
-  if (previousCounselorId) await refreshCounselorStudentCount(previousCounselorId);
-  if (student.assignedCounselorId) {
-    await refreshCounselorStudentCount(student.assignedCounselorId);
+  if (previousCounselorId && previousCounselorId !== String(student.assignedCounselorId || '')) {
+    await adjustCounselorStudentCount(previousCounselorId, -1);
+  }
+  if (student.assignedCounselorId && String(student.assignedCounselorId) !== previousCounselorId) {
+    await adjustCounselorStudentCount(student.assignedCounselorId, 1);
   }
 
   return serializeStudent(student);
@@ -215,28 +224,33 @@ export async function listUnassignedStudents(accessUser, query = {}) {
 
 /**
  * Validate a counselor referral code (used by the student website).
+ * Empty / whitespace → not_provided (caller should treat as optional skip, not hard error for UI idle).
  */
 export async function validateReferralCode(rawCode) {
-  const code = normalizeReferralCode(rawCode);
-  if (!code || !isValidReferralCodeFormat(code)) {
-    return { valid: false, message: 'Referral code must be 6–8 letters/numbers' };
+  if (!isReferralCodeProvided(rawCode)) {
+    return {
+      valid: false,
+      reason: 'not_provided',
+      message: 'Referral code is required',
+    };
   }
 
-  const counselor = await findCounselorByReferralCode(code);
-  if (!counselor) {
-    return { valid: false, message: 'Invalid referral code' };
-  }
-
-  const org = await Organization.findById(counselor.organizationId).lean();
-  if (!org || org.status !== ENTITY_STATUS.ACTIVE) {
-    return { valid: false, message: 'Organization is not accepting registrations' };
+  const resolved = await resolveActiveReferral(rawCode);
+  if (!resolved.ok) {
+    return {
+      valid: false,
+      reason: resolved.reason,
+      message: resolved.message,
+    };
   }
 
   return {
     valid: true,
-    counselorName: counselor.name || '',
-    organizationId: String(counselor.organizationId),
-    counselor: serializeCounselor(counselor),
+    organizationId: String(resolved.counselor.organizationId),
+    counselorId: String(resolved.counselor._id),
+    counselorName: resolved.counselor.name || '',
+    referralCode: resolved.code,
+    counselor: serializeCounselor(resolved.counselor),
   };
 }
 

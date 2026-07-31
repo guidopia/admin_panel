@@ -17,7 +17,9 @@ import { ACCESS_ROLES, ENTITY_STATUS } from '../src/constants/roles.js';
 import { AccessUser } from '../src/models/AccessUser.js';
 import { Counselor } from '../src/models/Counselor.js';
 import { Organization } from '../src/models/Organization.js';
-import { generateUniqueReferralCode } from '../src/services/accessHelpers.js';
+import { createActiveReferralCode } from '../src/services/accessHelpers.js';
+import { ReferralCode } from '../src/models/ReferralCode.js';
+import { REFERRAL_CODE_STATUS } from '../src/constants/roles.js';
 
 dns.setDefaultResultOrder('ipv4first');
 dotenv.config();
@@ -36,6 +38,7 @@ async function main() {
     Organization.syncIndexes(),
     AccessUser.syncIndexes(),
     Counselor.syncIndexes(),
+    ReferralCode.syncIndexes(),
   ]);
 
   const orgName = 'Vidhyasaarthi';
@@ -77,7 +80,6 @@ async function main() {
   const counselorEmail = 'counselor@vidhyasaarthi.guidopia.com';
   let counselor = await Counselor.findOne({ email: counselorEmail });
   if (!counselor) {
-    const referralCode = await generateUniqueReferralCode('Vidhya Counselor');
     const accessUser = await AccessUser.create({
       name: 'Vidhya Counselor',
       email: counselorEmail,
@@ -92,14 +94,53 @@ async function main() {
       name: 'Vidhya Counselor',
       email: counselorEmail,
       phone: '',
-      referralCode,
+      referralCode: '',
       status: ENTITY_STATUS.ACTIVE,
       studentCount: 0,
     });
     accessUser.counselorId = counselor._id;
     await accessUser.save();
+    const codeRow = await createActiveReferralCode({
+      counselorId: counselor._id,
+      organizationId: org._id,
+      name: counselor.name,
+    });
+    counselor.referralCode = codeRow.code;
+    await counselor.save();
     console.log('Created counselor + referral code:', counselor.referralCode);
   } else {
+    const existingActive = await ReferralCode.findOne({
+      counselorId: counselor._id,
+      status: REFERRAL_CODE_STATUS.ACTIVE,
+    });
+    if (!existingActive) {
+      if (counselor.referralCode) {
+        try {
+          await ReferralCode.create({
+            code: counselor.referralCode,
+            counselorId: counselor._id,
+            organizationId: counselor.organizationId,
+            status: REFERRAL_CODE_STATUS.ACTIVE,
+          });
+        } catch {
+          const row = await createActiveReferralCode({
+            counselorId: counselor._id,
+            organizationId: counselor.organizationId,
+            name: counselor.name,
+          });
+          counselor.referralCode = row.code;
+          await counselor.save();
+        }
+      } else {
+        const row = await createActiveReferralCode({
+          counselorId: counselor._id,
+          organizationId: counselor.organizationId,
+          name: counselor.name,
+        });
+        counselor.referralCode = row.code;
+        await counselor.save();
+      }
+    }
     console.log('Counselor already exists, code:', counselor.referralCode);
   }
 

@@ -44,6 +44,7 @@ export function errorHandler(err, req, res, _next) {
   };
 
   if (err.details) payload.details = err.details;
+  if (err.reason) payload.reason = err.reason;
   if (!isProd()) payload.stack = err.stack;
 
   return res.status(statusCode).json(payload);

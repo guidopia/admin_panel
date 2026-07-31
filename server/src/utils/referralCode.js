@@ -21,8 +21,12 @@ export function buildReferralCodeCandidate(name = '') {
   return `${prefix}${suffix}`;
 }
 
+/**
+ * Normalize user/query input. Empty / whitespace-only / bare "?ref=" → ''.
+ * Callers treat '' as "not provided" (not an invalid code).
+ */
 export function normalizeReferralCode(code) {
-  return String(code || '')
+  return String(code ?? '')
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '');
@@ -30,4 +34,9 @@ export function normalizeReferralCode(code) {
 
 export function isValidReferralCodeFormat(code) {
   return /^[A-Z0-9]{6,8}$/.test(normalizeReferralCode(code));
+}
+
+/** True when the caller explicitly supplied a non-empty code string. */
+export function isReferralCodeProvided(code) {
+  return normalizeReferralCode(code).length > 0;
 }

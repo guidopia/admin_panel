@@ -16,7 +16,7 @@ import { AccessUser } from '../src/models/AccessUser.js';
 import { Counselor } from '../src/models/Counselor.js';
 import { Organization } from '../src/models/Organization.js';
 import { Student } from '../src/models/Student.js';
-import { generateUniqueReferralCode } from '../src/services/accessHelpers.js';
+import { createActiveReferralCode } from '../src/services/accessHelpers.js';
 
 dns.setDefaultResultOrder('ipv4first');
 dotenv.config();
@@ -56,7 +56,6 @@ async function upsertCounselor({ name, email, phone, password, organizationId })
   let counselor = await Counselor.findOne({ email });
   if (counselor) return counselor;
 
-  const referralCode = await generateUniqueReferralCode(name);
   const accessUser = await AccessUser.create({
     name,
     email,
@@ -71,13 +70,20 @@ async function upsertCounselor({ name, email, phone, password, organizationId })
     name,
     email,
     phone: phone || '',
-    referralCode,
+    referralCode: '',
     status: ENTITY_STATUS.ACTIVE,
     studentCount: 0,
   });
   accessUser.counselorId = counselor._id;
   await accessUser.save();
-  console.log('Created counselor:', email, '/', password, 'code:', referralCode);
+  const codeRow = await createActiveReferralCode({
+    counselorId: counselor._id,
+    organizationId,
+    name,
+  });
+  counselor.referralCode = codeRow.code;
+  await counselor.save();
+  console.log('Created counselor:', email, '/', password, 'code:', codeRow.code);
   return counselor;
 }
 

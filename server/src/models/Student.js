@@ -34,13 +34,31 @@ export const studentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** Mutable — current ownership (manual reassignment may change this). */
     assignedCounselorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Counselor',
       default: null,
       index: true,
     },
+    /**
+     * Immutable snapshot of who the referral attributed at registration.
+     * Set once when registrationType === referral; never overwritten on reassignment.
+     */
+    referredCounselorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Counselor',
+      default: null,
+      index: true,
+    },
+    /** Exact code string entered at signup (survives regenerate / revoke). */
     referralCodeEntered: { type: String, uppercase: true, trim: true, default: null },
+    /** Optional FK into referral_codes for history joins. */
+    referralCodeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ReferralCode',
+      default: null,
+    },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, trim: true, default: '' },

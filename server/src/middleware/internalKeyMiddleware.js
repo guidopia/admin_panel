@@ -1,19 +1,27 @@
 import { ApiError } from '../utils/apiError.js';
 
+function isProductionLike() {
+  return Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
+}
+
 /**
- * Optional shared-secret guard for server-to-server endpoints.
+ * Shared-secret guard for server-to-server Access Control endpoints
+ * (referral validate, student register, student lookup).
  *
- * Student self-registration is inherently public (a brand-new student has no
- * JWT yet). When the integrated student website performs registration
- * server-to-server, we can lock the endpoint down: if `INTERNAL_REGISTER_KEY`
- * is configured, callers must send a matching `x-internal-key` header.
- *
- * If the env var is not set, the guard is a no-op so the endpoint keeps its
- * original public behavior (backward compatible).
+ * Production / Vercel: INTERNAL_REGISTER_KEY must be set and match `x-internal-key`.
+ * Local/dev: if the key is unset, the guard is a no-op for convenience.
  */
 export function requireInternalKey(req, _res, next) {
   const expected = (process.env.INTERNAL_REGISTER_KEY || '').trim();
-  if (!expected) return next();
+
+  if (!expected) {
+    if (isProductionLike()) {
+      return next(
+        new ApiError(500, 'INTERNAL_REGISTER_KEY is required in production')
+      );
+    }
+    return next();
+  }
 
   const provided = (req.headers['x-internal-key'] || '').toString().trim();
   if (!provided || provided !== expected) {

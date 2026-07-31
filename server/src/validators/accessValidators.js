@@ -59,9 +59,18 @@ export const registerStudentSchema = z.object({
   email: z.string().email(),
   phone: z.string().trim().max(40).optional().default(''),
   password: z.string().min(8).max(128).optional(),
-  referralCode: z.string().trim().min(6).max(8).optional(),
-  /** Required when no referral code (admin places student into an org as unassigned) */
-  organizationId: objectId.optional(),
+  // Empty string / omitted = not provided (unassigned signup allowed).
+  // Non-empty must be 6–8 chars; server still re-validates against referral_codes.
+  referralCode: z
+    .string()
+    .trim()
+    .transform((s) => s.toUpperCase().replace(/\s+/g, ''))
+    .refine((s) => s.length === 0 || (s.length >= 6 && s.length <= 8), {
+      message: 'Referral code must be 6–8 letters/numbers',
+    })
+    .optional(),
+  // organizationId is intentionally NOT accepted from callers.
+  // Org placement is owned by Admin (referral counselor org or DEFAULT_ORGANIZATION_ID).
 });
 
 export const assignStudentSchema = z.object({

@@ -11,6 +11,17 @@ export const ENTITY_STATUS = {
   INACTIVE: 'inactive',
 };
 
+/** Soft-revoke lifecycle for `referral_codes` rows (global unique on `code`). */
+export const REFERRAL_CODE_STATUS = {
+  ACTIVE: 'active',
+  REVOKED: 'revoked',
+};
+
+export const REFERRAL_REVOKE_REASONS = {
+  REGENERATED: 'regenerated',
+  COUNSELOR_DEACTIVATED: 'counselor_deactivated',
+};
+
 export const REGISTRATION_TYPES = {
   REFERRAL: 'referral',
   SKIPPED: 'skipped',

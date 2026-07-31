@@ -1,4 +1,4 @@
-import { ACCESS_ROLES, ENTITY_STATUS } from '../constants/roles.js';
+import { ACCESS_ROLES, ENTITY_STATUS, REFERRAL_REVOKE_REASONS } from '../constants/roles.js';
 import { AccessUser } from '../models/AccessUser.js';
 import { Counselor } from '../models/Counselor.js';
 import { Student } from '../models/Student.js';
@@ -6,10 +6,11 @@ import { ApiError } from '../utils/apiError.js';
 import { serializeCounselor } from '../utils/serializers.js';
 import {
   assertOrganizationExists,
+  createActiveReferralCode,
   generateTempPassword,
-  generateUniqueReferralCode,
   hashPassword,
-  refreshCounselorStudentCount,
+  regenerateCounselorReferralCode,
+  softRevokeActiveCodes,
 } from './accessHelpers.js';
 
 export async function listCounselors({ organizationId, status, q } = {}) {
@@ -45,11 +46,11 @@ export async function createCounselor(payload) {
   ]);
   if (userClash || counselorClash) throw new ApiError(409, 'Email already in use');
 
-  const referralCode = await generateUniqueReferralCode(payload.name);
   const plainPassword = payload.password || generateTempPassword();
   const passwordHash = await hashPassword(plainPassword);
 
   let accessUser;
+  let counselor;
   try {
     accessUser = await AccessUser.create({
       name: payload.name,
@@ -60,13 +61,13 @@ export async function createCounselor(payload) {
       status: ENTITY_STATUS.ACTIVE,
     });
 
-    const counselor = await Counselor.create({
+    counselor = await Counselor.create({
       organizationId: payload.organizationId,
       accessUserId: accessUser._id,
       name: payload.name,
       email,
       phone: payload.phone || '',
-      referralCode,
+      referralCode: '',
       status: ENTITY_STATUS.ACTIVE,
       studentCount: 0,
     });
@@ -74,14 +75,28 @@ export async function createCounselor(payload) {
     accessUser.counselorId = counselor._id;
     await accessUser.save();
 
+    const codeRow = await createActiveReferralCode({
+      counselorId: counselor._id,
+      organizationId: counselor.organizationId,
+      name: counselor.name,
+    });
+
+    counselor.referralCode = codeRow.code;
+    await counselor.save();
+
     return {
       counselor: serializeCounselor(counselor),
       temporaryPassword: payload.password ? undefined : plainPassword,
     };
   } catch (err) {
+    if (counselor?._id) {
+      await softRevokeActiveCodes(counselor._id, REFERRAL_REVOKE_REASONS.REGENERATED).catch(
+        () => {}
+      );
+      await Counselor.findByIdAndDelete(counselor._id).catch(() => {});
+    }
     if (accessUser?._id) {
       await AccessUser.findByIdAndDelete(accessUser._id).catch(() => {});
-      await Counselor.deleteOne({ accessUserId: accessUser._id }).catch(() => {});
     }
     throw err;
   }
@@ -99,9 +114,21 @@ export async function updateCounselor(id, payload) {
   }
   if (payload.name !== undefined) counselor.name = payload.name;
   if (payload.phone !== undefined) counselor.phone = payload.phone;
+
+  const becomingInactive =
+    payload.status !== undefined &&
+    payload.status === ENTITY_STATUS.INACTIVE &&
+    counselor.status !== ENTITY_STATUS.INACTIVE;
+
   if (payload.status !== undefined) counselor.status = payload.status;
 
   await counselor.save();
+
+  if (becomingInactive) {
+    await softRevokeActiveCodes(counselor._id, REFERRAL_REVOKE_REASONS.COUNSELOR_DEACTIVATED);
+    counselor.referralCode = '';
+    await counselor.save();
+  }
 
   if (counselor.accessUserId) {
     const accessUser = await AccessUser.findById(counselor.accessUserId).select('+password');
@@ -118,7 +145,7 @@ export async function updateCounselor(id, payload) {
 }
 
 /**
- * Delete counselor: unassign students (keep students), remove login + profile.
+ * Delete counselor: unassign students (keep students), revoke codes, remove login + profile.
  */
 export async function deleteCounselor(id) {
   const counselor = await Counselor.findById(id);
@@ -128,6 +155,8 @@ export async function deleteCounselor(id) {
     { assignedCounselorId: counselor._id },
     { $set: { assignedCounselorId: null } }
   );
+
+  await softRevokeActiveCodes(counselor._id, REFERRAL_REVOKE_REASONS.COUNSELOR_DEACTIVATED);
 
   if (counselor.accessUserId) {
     await AccessUser.findByIdAndDelete(counselor.accessUserId);
@@ -140,12 +169,17 @@ export async function deleteCounselor(id) {
 export async function regenerateReferralCode(id) {
   const counselor = await Counselor.findById(id);
   if (!counselor) throw new ApiError(404, 'Counselor not found');
+  if (counselor.status !== ENTITY_STATUS.ACTIVE) {
+    throw new ApiError(400, 'Cannot regenerate code for an inactive counselor');
+  }
 
-  counselor.referralCode = await generateUniqueReferralCode(counselor.name);
+  const row = await regenerateCounselorReferralCode(counselor);
+  counselor.referralCode = row.code;
   await counselor.save();
   return serializeCounselor(counselor);
 }
 
 export async function syncStudentCount(counselorId) {
+  const { refreshCounselorStudentCount } = await import('./accessHelpers.js');
   return refreshCounselorStudentCount(counselorId);
 }

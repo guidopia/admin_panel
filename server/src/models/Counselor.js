@@ -19,12 +19,16 @@ export const counselorSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, trim: true, default: '' },
+    /**
+     * Denormalized cache of the counselor's current active code for Admin UI lists.
+     * Source of truth + uniqueness live in `referral_codes` (never mutate that code in place).
+     */
     referralCode: {
       type: String,
-      required: true,
       uppercase: true,
       trim: true,
-      minlength: 6,
+      default: '',
+      minlength: 0,
       maxlength: 8,
     },
     status: {
@@ -40,8 +44,8 @@ export const counselorSchema = new mongoose.Schema(
   }
 );
 
-counselorSchema.index({ referralCode: 1 }, { unique: true });
 counselorSchema.index({ email: 1 }, { unique: true });
 counselorSchema.index({ organizationId: 1, status: 1 });
+counselorSchema.index({ referralCode: 1 });
 
 export const Counselor = createAccessModelProxy('Counselor', counselorSchema, 'counselors');
