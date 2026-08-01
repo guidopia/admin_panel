@@ -44,3 +44,10 @@ export const updateAdmin = asyncHandler(async (req, res) => {
   const admin = await adminService.updateAdmin(req.params.id, payload);
   res.json({ admin });
 });
+
+export const deleteAdmin = asyncHandler(async (req, res) => {
+  const existing = await adminService.getAdminById(req.params.id);
+  assertOrgAccess(req.accessUser, existing.organizationId);
+  const result = await adminService.deleteAdmin(req.params.id);
+  res.json(result);
+});

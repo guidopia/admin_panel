@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 
 function PlatformTabsImpl({ platforms, value, onChange, disabled }) {
   return (
-    <div className="seg" role="tablist" aria-label="Choose database">
+    <div className="seg" role="tablist" aria-label="Choose product">
       {platforms.map((platform) => {
         const active = value === platform.id;
         const isDisabled = disabled || platform.configured === false;
@@ -17,11 +17,7 @@ function PlatformTabsImpl({ platforms, value, onChange, disabled }) {
             onClick={() => onChange(platform.id)}
             title={
               platform.configured === false
-                ? platform.id === 'vidhyasaarthi'
-                  ? `${platform.label} is not configured — add MONGODB_URI_VIDHYASAARTHI to server .env`
-                  : platform.id === 'career-beacon'
-                    ? `${platform.label} is not configured — add MONGODB_URI_CAREER_BEACON to server .env`
-                    : `${platform.label} is not configured`
+                ? `${platform.label} is not configured`
                 : `View ${platform.label} users`
             }
           >

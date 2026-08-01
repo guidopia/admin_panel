@@ -37,11 +37,7 @@ export function AccessLoginPage() {
       const msg = accessApiError(err, 'Invalid email or password');
       const network =
         !err?.response && (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK');
-      toast.error(
-        network
-          ? 'Cannot reach API at localhost:5000 — start the admin server (npm run dev in server/)'
-          : msg
-      );
+      toast.error(network ? 'Cannot reach the server. Please try again.' : msg);
     } finally {
       setLoading(false);
     }
@@ -66,11 +62,7 @@ export function AccessLoginPage() {
           <div className="mb-4">
             <div className="text-[15px] font-semibold text-neutral-900">Sign in</div>
             <p className="mt-0.5 text-[12.5px] text-neutral-500">
-              Super Admin, Organization Admin, and Counselor login. After sign-in you get orgs,
-              counselors, referral codes, and students.
-            </p>
-            <p className="mt-2 rounded-lg bg-neutral-50 px-2.5 py-2 font-mono text-[11px] text-neutral-600">
-              Super Admin: guidopiacareer@gmail.com
+              Sign in with your Access Control account.
             </p>
           </div>
 
@@ -110,9 +102,9 @@ export function AccessLoginPage() {
         </div>
 
         <div className="mt-4 text-center text-[11.5px] text-neutral-400">
-          Prodigy / Users admin?{' '}
+          Looking for the Users admin?{' '}
           <Link to="/login" className="font-medium text-neutral-600 hover:text-neutral-900">
-            Use the main admin login
+            Go to main login
           </Link>
         </div>
       </div>

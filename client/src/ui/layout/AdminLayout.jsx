@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { accessRoleLabel } from '../../access/lib/accessSession.js';
 import { useAuth } from '../../state/auth/AuthContext.jsx';
 import { setApiAuthToken } from '../../lib/api.js';
 
@@ -224,9 +225,10 @@ function SidebarContent({
   showAccess,
 }) {
   const initials = useMemo(
-    () => getInitials(user?.name || user?.email || 'Admin'),
-    [user?.name, user?.email]
+    () => getInitials(user?.name || 'Admin'),
+    [user?.name]
   );
+  const roleLabel = accessRoleLabel(user?.accessRole) || (user?.role === 'admin' ? 'Admin' : 'Admin');
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
@@ -297,7 +299,7 @@ function SidebarContent({
           <div className="flex flex-col items-center gap-1.5 py-1">
             <div
               className="grid h-8 w-8 place-items-center rounded-full bg-neutral-900 text-[11px] font-semibold text-white"
-              title={user?.email || 'Admin'}
+              title={user?.name || roleLabel}
             >
               {initials}
             </div>
@@ -321,7 +323,7 @@ function SidebarContent({
                 {user?.name || 'Admin'}
               </div>
               <div className="truncate text-[11px] text-neutral-500">
-                {user?.email || '—'}
+                {roleLabel}
               </div>
             </div>
             <button
@@ -456,8 +458,8 @@ export function AdminLayout() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="hidden text-[12px] text-neutral-500 md:block">
-                  {user?.email || ''}
+                <div className="hidden max-w-[160px] truncate text-[12px] text-neutral-500 md:block">
+                  {user?.name || accessRoleLabel(user?.accessRole) || 'Admin'}
                 </div>
                 <button
                   type="button"

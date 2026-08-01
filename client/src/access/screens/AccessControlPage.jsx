@@ -16,7 +16,12 @@ import { accessApi, accessApiError } from '../lib/accessApi.js';
 import { AccessTabs } from '../ui/AccessTabs.jsx';
 import { AdminsPanel } from '../ui/AdminsPanel.jsx';
 import { AddCounselorModal } from '../ui/AddCounselorModal.jsx';
-import { AddAdminModal, CredentialsModal } from '../ui/AdminModals.jsx';
+import {
+  AddAdminModal,
+  CredentialsModal,
+  DeleteAdminModal,
+  EditAdminModal,
+} from '../ui/AdminModals.jsx';
 import { AnalyticsPanel, StatCards } from '../ui/AnalyticsPanel.jsx';
 import { AssignCounselorModal } from '../ui/AssignCounselorModal.jsx';
 import { CounselorsPanel } from '../ui/CounselorsPanel.jsx';
@@ -43,6 +48,7 @@ const SUPER_ADMIN_TABS = [
   { id: 'admins', label: 'Admins' },
   { id: 'counselors', label: 'Counselors' },
   { id: 'students', label: 'Students' },
+  { id: 'unassigned', label: 'Unassigned' },
   { id: 'referrals', label: 'Referral system' },
   { id: 'analytics', label: 'Analytics' },
 ];
@@ -138,6 +144,8 @@ export function AccessControlPage() {
   const [createdCounselor, setCreatedCounselor] = useState(null);
   const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [createdAdmin, setCreatedAdmin] = useState(null);
+  const [editAdmin, setEditAdmin] = useState(null);
+  const [deleteAdmin, setDeleteAdmin] = useState(null);
   const [assignStudent, setAssignStudent] = useState(null);
   const [detailStudent, setDetailStudent] = useState(null);
   const [detailOrganization, setDetailOrganization] = useState(null);
@@ -243,6 +251,9 @@ export function AccessControlPage() {
         if (tab.id === 'admins') return { ...tab, count: admins.length };
         if (tab.id === 'counselors') return { ...tab, count: counselors.length };
         if (tab.id === 'students') return { ...tab, count: students.length };
+        if (tab.id === 'unassigned') {
+          return { ...tab, count: students.filter((s) => !s.assignedCounselorId).length };
+        }
         return tab;
       });
     }
@@ -295,6 +306,32 @@ export function AccessControlPage() {
     [refreshQuiet]
   );
 
+  const handleEditAdmin = useCallback(async (id, form) => {
+    try {
+      const updated = await accessApi.updateAdmin(id, form);
+      setAdmins((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      setEditAdmin(null);
+      toast.success('Admin updated');
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
+
+  const handleDeleteAdmin = useCallback(
+    async (admin) => {
+      try {
+        await accessApi.deleteAdmin(admin.id);
+        setDeleteAdmin(null);
+        setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+        toast.success(`${admin.name} deleted`);
+        refreshQuiet();
+      } catch (err) {
+        toast.error(accessApiError(err));
+      }
+    },
+    [refreshQuiet]
+  );
+
   const handleEditCounselor = useCallback(
     async (id, form) => {
       try {
@@ -332,7 +369,7 @@ export function AccessControlPage() {
         setDetailCounselor((prev) => (prev?.id === counselor.id ? updated : prev));
         setCounselors((prev) => prev.map((c) => (c.id === counselor.id ? updated : c)));
         setRegenerateCounselor(null);
-        toast.success(`New referral code: ${updated.referralCode}`);
+        toast.success('Referral code regenerated');
       } catch (err) {
         toast.error(accessApiError(err));
       }
@@ -416,10 +453,13 @@ export function AccessControlPage() {
 
   const canManageOrganizations = isSuper;
   const canManageCounselors = isSuper || isWL;
-  const canAssignStudents = isWL;
+  const canManageAdmins = isSuper;
+  const canAssignStudents = isSuper || isWL;
+  const canAddStudentNotes = isSuper || isWL || isCsl;
   const isCounselorView = isCsl;
   const showOrgColumn = isSuper;
   const showCounselorsTab = isSuper || isWL;
+  const showUnassignedTab = isSuper || isWL;
 
   const booting = loading && analytics === null;
 
@@ -433,24 +473,31 @@ export function AccessControlPage() {
           </div>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-neutral-500">
             {isSuper
-              ? 'Platform-wide view. Create organization admins, counselors (auto referral codes), and manage all organizations and students.'
+              ? 'Manage organizations, admins, counselors, referral codes, and students across the platform.'
               : null}
             {isWL
-              ? `Organization Admin${currentOrganization ? ` for ${currentOrganization.name}` : ''}. Create counselors with referral codes and manage your students.`
+              ? `Manage counselors, referral codes, and students${currentOrganization ? ` for ${currentOrganization.name}` : ''}.`
               : null}
             {isCounselorView
-              ? 'Counselor view. You only see students who onboarded with your referral code.'
+              ? 'View and support students assigned to you.'
               : null}
           </p>
         </div>
 
         {isSuper && analytics ? <StatCards stats={analytics} /> : null}
 
-        {!isSuper ? (
+        {!isSuper && (user?.name || currentOrganization) ? (
           <div className="surface-flat px-4 py-3 text-[12.5px] text-neutral-600">
-            Signed in as <span className="font-medium text-neutral-900">{user?.name || user?.email}</span>
+            {user?.name ? (
+              <>
+                Signed in as <span className="font-medium text-neutral-900">{user.name}</span>
+              </>
+            ) : null}
             {isWL && currentOrganization ? (
-              <> · <span className="font-medium text-neutral-900">{currentOrganization.name}</span></>
+              <>
+                {user?.name ? ' · ' : null}
+                <span className="font-medium text-neutral-900">{currentOrganization.name}</span>
+              </>
             ) : null}
           </div>
         ) : null}
@@ -484,6 +531,9 @@ export function AccessControlPage() {
               query={adminQuery}
               onQueryChange={setAdminQuery}
               onAdd={() => setAddAdminOpen(true)}
+              onEdit={setEditAdmin}
+              onDelete={setDeleteAdmin}
+              canManage={canManageAdmins}
             />
           ) : null}
 
@@ -539,7 +589,7 @@ export function AccessControlPage() {
             />
           ) : null}
 
-          {activeTab === 'unassigned' && isWL ? (
+          {activeTab === 'unassigned' && showUnassignedTab ? (
             <StudentsPanel
               students={students}
               counselors={counselors}
@@ -548,7 +598,7 @@ export function AccessControlPage() {
               onQueryChange={setUnassignedQuery}
               onSelectStudent={setDetailStudent}
               onAssignStudent={setAssignStudent}
-              showOrgColumn={false}
+              showOrgColumn={showOrgColumn}
               unassignedOnly
               title="Unassigned students"
               showAssignActions
@@ -596,6 +646,21 @@ export function AccessControlPage() {
         onClose={() => setAddAdminOpen(false)}
         organizations={organizations}
         onSubmit={handleAddAdmin}
+      />
+
+      <EditAdminModal
+        open={Boolean(editAdmin)}
+        onClose={() => setEditAdmin(null)}
+        admin={editAdmin}
+        organizations={organizations}
+        onSubmit={handleEditAdmin}
+      />
+
+      <DeleteAdminModal
+        open={Boolean(deleteAdmin)}
+        onClose={() => setDeleteAdmin(null)}
+        admin={deleteAdmin}
+        onConfirm={handleDeleteAdmin}
       />
 
       <CredentialsModal
@@ -666,7 +731,7 @@ export function AccessControlPage() {
           setDetailStudent(null);
           setAssignStudent(student);
         }}
-        onAddNote={isCounselorView ? handleAddNote : undefined}
+        onAddNote={canAddStudentNotes ? handleAddNote : undefined}
         viewerRole={isCounselorView ? 'counselor' : 'admin'}
         canAssign={canAssignStudents}
       />

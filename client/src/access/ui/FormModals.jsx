@@ -44,7 +44,7 @@ export function OrganizationFormModal({ open, onClose, mode = 'create', organiza
     <ModalShell
       open={open}
       title={mode === 'edit' ? 'Edit organization' : 'Add organization'}
-      description="Super Admin only. Creates an isolated white-label tenant."
+      description="Create a new organization."
       onClose={onClose}
       footer={
         <>
@@ -204,7 +204,7 @@ export function DeleteCounselorModal({ open, onClose, counselor, assignedStudent
           {assignedStudentCount > 0 ? (
             <>
               <strong>{assignedStudentCount}</strong> assigned student{assignedStudentCount === 1 ? '' : 's'} will
-              become <strong>unassigned</strong> and visible only to the white-label admin until reassigned.
+              become <strong>unassigned</strong> until an admin reassigns them.
             </>
           ) : (
             <>This counselor has no assigned students.</>
@@ -248,7 +248,7 @@ export function DeactivateOrganizationModal({ open, onClose, organization, onCon
     >
       <p className="text-[13px] leading-relaxed text-neutral-600">
         {isActive
-          ? 'Counselors and admins in this organization will lose access. Data is retained but the tenant becomes inactive.'
+          ? 'Counselors and admins in this organization will lose access. Data is retained but the organization becomes inactive.'
           : 'Organization will become active again and admins can manage counselors and students.'}
       </p>
     </ModalShell>

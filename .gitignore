@@ -36,3 +36,4 @@ client/.vite/
 # Misc
 *.tsbuildinfo
 
+.vercel

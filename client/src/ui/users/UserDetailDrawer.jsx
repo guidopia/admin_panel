@@ -295,8 +295,8 @@ export function UserDetailDrawer({ userId, platform, open, onClose }) {
                 <div className="surface-flat px-4 py-8 text-center">
                   <p className="text-sm font-medium text-neutral-900">Onboarding completed</p>
                   <p className="mt-1 text-[12px] text-neutral-500">
-                    This user finished onboarding, but their answers were not found in the onboardings
-                    collection. Try refreshing, or verify the user exists in the {activePlatformLabel} database.
+                    This user finished onboarding, but their answers weren’t found. Try refreshing, or
+                    confirm the user exists in {activePlatformLabel}.
                   </p>
                 </div>
               ) : legacyAnswers.length > 0 ? (
@@ -309,7 +309,7 @@ export function UserDetailDrawer({ userId, platform, open, onClose }) {
                 <div className="surface-flat px-4 py-8 text-center">
                   <p className="text-sm font-medium text-neutral-900">No onboarding data</p>
                   <p className="mt-1 text-[12px] text-neutral-500">
-                    This user hasn’t completed onboarding yet, or data wasn’t saved to the database.
+                    This user hasn’t completed onboarding yet, or their answers weren’t saved.
                   </p>
                 </div>
               )}

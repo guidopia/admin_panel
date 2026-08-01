@@ -78,6 +78,7 @@ router.get(
   adminController.getAdmin
 );
 router.patch('/admins/:id', requireSuperAdmin, adminController.updateAdmin);
+router.delete('/admins/:id', requireSuperAdmin, adminController.deleteAdmin);
 
 // ── Counselors ────────────────────────────────────────────────────────
 router.get('/counselors', requireAnyAccessRole, counselorController.listCounselors);

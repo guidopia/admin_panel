@@ -19,11 +19,9 @@ export function OrganizationProfilePanel({ organization, onEdit, analytics }) {
               <div className="text-[18px] font-semibold text-neutral-900">{organization.name}</div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <StatusBadge status={organization.status} />
-                <span className="chip-muted">White-label tenant</span>
               </div>
               <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-neutral-500">
-                Manage your organization profile, counselors, and students. You cannot access other
-                organizations or Guidopia platform settings.
+                Manage your organization profile, counselors, and students.
               </p>
             </div>
           </div>
@@ -68,7 +66,7 @@ export function OrganizationProfilePanel({ organization, onEdit, analytics }) {
           <div>
             <dt className="text-neutral-500">Logo URL</dt>
             <dd className="mt-0.5 break-all font-mono text-[12px] text-neutral-700">
-              {organization.logoUrl || 'Not set — upload via backend'}
+              {organization.logoUrl || 'Not set'}
             </dd>
           </div>
         </dl>

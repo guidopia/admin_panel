@@ -171,7 +171,52 @@ export async function resolveActiveReferral(rawCode) {
     };
   }
 
-  const row = await ReferralCode.findOne({ code });
+  let row = await ReferralCode.findOne({ code });
+
+  // Fallback: Admin UI shows counselors.referralCode (denormalized). If the
+  // referral_codes row is missing (partial write / pre-migrate data), still
+  // accept an active counselor with that cache and backfill the row.
+  if (!row) {
+    const counselorByCache = await Counselor.findOne({
+      referralCode: code,
+      status: ENTITY_STATUS.ACTIVE,
+    });
+    if (counselorByCache) {
+      try {
+        row = await ReferralCode.create({
+          code,
+          counselorId: counselorByCache._id,
+          organizationId: counselorByCache.organizationId,
+          status: REFERRAL_CODE_STATUS.ACTIVE,
+        });
+      } catch (err) {
+        // Race / already inserted
+        if (err?.code === 11000) {
+          row = await ReferralCode.findOne({ code });
+        } else {
+          // Still allow validation via counselor cache if insert fails for other reasons
+          const org = await Organization.findById(counselorByCache.organizationId);
+          if (!org || org.status !== ENTITY_STATUS.ACTIVE) {
+            return {
+              ok: false,
+              reason: 'org_inactive',
+              message: 'Organization is not accepting registrations',
+            };
+          }
+          return {
+            ok: true,
+            reason: null,
+            message: null,
+            row: null,
+            counselor: counselorByCache,
+            org,
+            code,
+          };
+        }
+      }
+    }
+  }
+
   if (!row) {
     return { ok: false, reason: 'not_found', message: 'Invalid referral code' };
   }

@@ -37,7 +37,7 @@ export function LoginPage() {
         const data = await accessApi.login(cleanEmail, password);
         setAuth(data);
         setApiAuthToken(data.token);
-        toast.success('Signed in as Access Control');
+        toast.success('Signed in');
         navigate('/access', { replace: true });
         return;
       } catch (accessErr) {
@@ -80,8 +80,7 @@ export function LoginPage() {
           <div className="mb-5">
             <div className="text-[15px] font-semibold text-neutral-900">Sign in</div>
             <div className="mt-0.5 text-[12.5px] text-neutral-500">
-              Super Admin / org admins sign in here for Access Control (orgs, counselors, referral
-              codes). Prodigy Users admins also work on this page.
+              Sign in with your Guidopia admin account.
             </div>
           </div>
 
@@ -94,7 +93,7 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 autoComplete="email"
-                placeholder="guidopiacareer@gmail.com"
+                placeholder="you@organization.com"
                 required
               />
             </div>
@@ -121,13 +120,10 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div className="mt-4 space-y-2 text-center text-[11.5px] text-neutral-400">
-          <div>
-            Dedicated Access Control page:{' '}
-            <Link to="/login/access" className="font-medium text-neutral-600 hover:text-neutral-900">
-              /login/access
-            </Link>
-          </div>
+        <div className="mt-4 text-center text-[11.5px] text-neutral-400">
+          <Link to="/login/access" className="font-medium text-neutral-600 hover:text-neutral-900">
+            Access Control login
+          </Link>
         </div>
       </div>
     </div>

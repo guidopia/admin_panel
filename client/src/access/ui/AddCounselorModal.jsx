@@ -34,7 +34,7 @@ export function AddCounselorModal({ open, onClose, organizations, onSubmit, hide
     <ModalShell
       open={open}
       title="Add counselor"
-      description="Creates a counselor account and auto-generates a unique referral code. UI-only — backend will handle persistence."
+      description="Create a counselor account. A unique referral code is generated automatically."
       onClose={onClose}
       footer={
         <>
@@ -99,8 +99,7 @@ export function AddCounselorModal({ open, onClose, organizations, onSubmit, hide
           />
         </div>
         <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-2.5 text-[12px] text-neutral-600">
-          On save, the system will generate a unique 6–8 character referral code (e.g.{' '}
-          <span className="font-mono font-semibold">RAH582</span>) and display it to the admin.
+          A unique referral code will be shown after you create the counselor.
         </div>
       </form>
     </ModalShell>

@@ -55,9 +55,25 @@ export async function updateAdmin(id, payload) {
   if (payload.name !== undefined) admin.name = payload.name;
   if (payload.status !== undefined) admin.status = payload.status;
   if (payload.password) admin.password = await hashPassword(payload.password);
+  if (payload.organizationId) {
+    await assertOrganizationExists(payload.organizationId);
+    admin.organizationId = payload.organizationId;
+  }
 
   await admin.save();
   return serializeAdmin(admin);
+}
+
+/**
+ * Hard-delete a white-label admin login. Super Admin only (enforced at route).
+ * Does not delete counselors/students owned by the organization.
+ */
+export async function deleteAdmin(id) {
+  const admin = await AccessUser.findOne({ _id: id, accessRole: ACCESS_ROLES.WL_ADMIN });
+  if (!admin) throw new ApiError(404, 'Admin not found');
+
+  await AccessUser.findByIdAndDelete(admin._id);
+  return { id: String(admin._id), deleted: true };
 }
 
 export async function getAdminById(id) {

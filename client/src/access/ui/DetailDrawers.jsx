@@ -92,12 +92,12 @@ function RegistrationCaseCard({ student }) {
   return (
     <div className="surface-flat p-3">
       <div className="text-[12px] font-semibold text-neutral-900">
-        {isReferral ? 'Case 1 · Referral code entered' : 'Case 2 · Referral code skipped'}
+        {isReferral ? 'Joined with referral code' : 'Joined without referral code'}
       </div>
       <p className="mt-1 text-[12px] leading-relaxed text-neutral-500">
         {isReferral
-          ? `Student entered ${student.referralCodeEntered || 'a referral code'} and was auto-assigned to their counselor.`
-          : 'Student skipped referral code. Visible only to white-label admin until manually assigned.'}
+          ? `Used code ${student.referralCodeEntered || '—'} and was auto-assigned to a counselor.`
+          : 'No referral code — waiting for an admin to assign a counselor.'}
       </p>
     </div>
   );
@@ -172,20 +172,6 @@ export function StudentDetailDrawer({
               <FieldRow label="Joined" value={formatDate(student.createdAt)} />
             </dl>
 
-            {!isCounselorView ? (
-              <div>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
-                  Access rules
-                </div>
-                <div className="space-y-2 text-[12px] text-neutral-600">
-                  <div className="rounded-lg border border-neutral-200 px-3 py-2">White-label admin · can view</div>
-                  <div className="rounded-lg border border-neutral-200 px-3 py-2">
-                    Assigned counselor · {assignedName ? 'can view' : 'no access'}
-                  </div>
-                  <div className="rounded-lg border border-neutral-200 px-3 py-2">Other counselors · access denied</div>
-                </div>
-              </div>
-            ) : null}
           </>
         ) : null}
 
@@ -248,10 +234,10 @@ export function StudentDetailDrawer({
               </dl>
             </div>
             <div className="flex gap-2">
-              <button type="button" className="btn-ghost h-9 flex-1 justify-center text-[12px]" disabled title="Backend integration pending">
+              <button type="button" className="btn-ghost h-9 flex-1 justify-center text-[12px]" disabled title="Coming soon">
                 Export PDF
               </button>
-              <button type="button" className="btn-primary h-9 flex-1 justify-center text-[12px]" disabled title="Backend integration pending">
+              <button type="button" className="btn-primary h-9 flex-1 justify-center text-[12px]" disabled title="Coming soon">
                 Export CSV
               </button>
             </div>
@@ -373,17 +359,6 @@ export function CounselorDetailDrawer({
           </div>
         ) : null}
 
-        <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
-            Counselor permissions
-          </div>
-          <ul className="space-y-1.5 text-[12.5px] text-neutral-600">
-            <li>✓ View assigned students only</li>
-            <li>✓ View assessments, reports, notes, progress</li>
-            <li>✗ Cannot view other counselors&apos; students</li>
-            <li>✗ Cannot create counselors or access org settings</li>
-          </ul>
-        </div>
       </div>
     </DrawerShell>
   );
@@ -404,16 +379,6 @@ export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, 
           <FieldRow label="Students" value={organization.studentCount} />
           <FieldRow label="Created" value={formatDate(organization.createdAt)} />
         </dl>
-
-        <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
-            Isolation rules
-          </div>
-          <p className="text-[12.5px] leading-relaxed text-neutral-600">
-            White-label admins, counselors, and students in this organization cannot access data from other
-            organizations. Guidopia Super Admin retains full platform visibility.
-          </p>
-        </div>
 
         {canManage ? (
           <div className="flex flex-wrap gap-2">

@@ -9,7 +9,16 @@ function formatDate(iso) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
-export function AdminsPanel({ admins, organizations, query, onQueryChange, onAdd }) {
+export function AdminsPanel({
+  admins,
+  organizations,
+  query,
+  onQueryChange,
+  onAdd,
+  onEdit,
+  onDelete,
+  canManage = true,
+}) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return admins;
@@ -26,7 +35,7 @@ export function AdminsPanel({ admins, organizations, query, onQueryChange, onAdd
       <div className="surface p-2.5">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
           <SearchInput value={query} onChange={onQueryChange} placeholder="Search admins by name, email, or organization" />
-          {onAdd ? (
+          {canManage && onAdd ? (
             <button type="button" className="btn-primary h-9 shrink-0 px-3 text-[12px]" onClick={onAdd}>
               Add admin
             </button>
@@ -45,6 +54,7 @@ export function AdminsPanel({ admins, organizations, query, onQueryChange, onAdd
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Created</th>
+                  {canManage ? <th className="px-4 py-3 text-right">Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -56,12 +66,32 @@ export function AdminsPanel({ admins, organizations, query, onQueryChange, onAdd
                     </td>
                     <td className="px-4 py-3.5 text-neutral-700">{orgName(admin.organizationId, organizations)}</td>
                     <td className="px-4 py-3.5">
-                      <span className="chip-outline">{admin.role}</span>
+                      <span className="chip-outline">Organization Admin</span>
                     </td>
                     <td className="px-4 py-3.5">
                       <StatusBadge status={admin.status} />
                     </td>
                     <td className="px-4 py-3.5 text-neutral-600">{formatDate(admin.createdAt)}</td>
+                    {canManage ? (
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex gap-1.5">
+                          <button
+                            type="button"
+                            className="btn-ghost h-8 px-2.5 text-[12px]"
+                            onClick={() => onEdit?.(admin)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex h-8 items-center rounded-lg border border-red-200 px-2.5 text-[12px] font-medium text-red-700 hover:bg-red-50"
+                            onClick={() => onDelete?.(admin)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

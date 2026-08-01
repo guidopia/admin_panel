@@ -49,6 +49,12 @@ export const accessApi = {
   createAdmin(payload) {
     return api.post('/api/access/admins', payload).then((r) => r.data);
   },
+  updateAdmin(id, payload) {
+    return api.patch(`/api/access/admins/${id}`, payload).then((r) => r.data.admin);
+  },
+  deleteAdmin(id) {
+    return api.delete(`/api/access/admins/${id}`).then((r) => r.data);
+  },
 
   // ── Counselors ────────────────────────────────────────────────────────
   listCounselors(params = {}) {

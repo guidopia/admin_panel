@@ -4,10 +4,7 @@ import toast from 'react-hot-toast';
 import { orgName } from '../lib/accessConstants.js';
 import { EmptyState, ReferralCodeBadge, SearchInput, StatusBadge } from './primitives.jsx';
 
-/**
- * Working Vidhyasaarthi referral dashboard (Super Admin).
- * Codes are generated per counselor and validated by the student portal via ADMIN_API_URL.
- */
+/** Super Admin referral codes dashboard. */
 export function ReferralSystemPanel({
   counselors = [],
   students = [],
@@ -63,13 +60,13 @@ export function ReferralSystemPanel({
     if (org && org.status !== 'active') {
       setTestResult({
         valid: false,
-        message: `Organization "${org.name}" is inactive — Vidhyasaarthi will reject this code`,
+        message: `Organization "${org.name}" is inactive — this code will be rejected`,
       });
       return;
     }
     setTestResult({
       valid: true,
-      message: `Valid for Vidhyasaarthi · ${counselor.name} · ${orgName(counselor.organizationId, organizations)}`,
+      message: `Valid · ${counselor.name} · ${orgName(counselor.organizationId, organizations)}`,
     });
   }
 
@@ -88,12 +85,12 @@ export function ReferralSystemPanel({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[15px] font-semibold text-neutral-900">Vidhyasaarthi referral codes</h2>
+              <h2 className="text-[15px] font-semibold text-neutral-900">Referral codes</h2>
               <span className="chip-outline">Student portal</span>
             </div>
             <p className="mt-1 max-w-2xl text-[12.5px] leading-relaxed text-neutral-500">
-              Each counselor gets a unique code. Students enter it during Vidhyasaarthi onboarding;
-              the portal validates against this Access Control API and auto-assigns the counselor.
+              Each counselor gets a unique code. Students enter it during onboarding and are
+              auto-assigned to that counselor.
             </p>
           </div>
           {canManage ? (
@@ -128,7 +125,7 @@ export function ReferralSystemPanel({
       </div>
 
       <div className="surface p-4">
-        <div className="mb-2 text-[13px] font-semibold text-neutral-900">Test a code (Vidhyasaarthi rules)</div>
+        <div className="mb-2 text-[13px] font-semibold text-neutral-900">Test a referral code</div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             className="input h-9 font-mono uppercase"
@@ -220,7 +217,7 @@ export function ReferralSystemPanel({
         ) : (
           <EmptyState
             title="No referral codes yet"
-            description="Create a counselor to auto-generate a Vidhyasaarthi referral code."
+            description="Create a counselor to generate a referral code."
             action={
               canManage ? (
                 <button type="button" className="btn-primary h-9 px-3 text-[12px]" onClick={onAddCounselor}>
@@ -234,7 +231,7 @@ export function ReferralSystemPanel({
 
       <div className="surface overflow-hidden">
         <div className="border-b border-neutral-100 px-4 py-3 text-[13px] font-semibold text-neutral-900">
-          Recent Vidhyasaarthi students who used a code
+          Recent students who used a code
         </div>
         {referralStudents.length ? (
           <div className="overflow-x-auto scrollbar-thin">
@@ -266,7 +263,7 @@ export function ReferralSystemPanel({
           </div>
         ) : (
           <div className="px-4 py-8 text-center text-[12.5px] text-neutral-500">
-            No referral signups yet. Share a counselor code in the Vidhyasaarthi onboarding flow.
+            No referral signups yet. Share a counselor code with students during onboarding.
           </div>
         )}
       </div>

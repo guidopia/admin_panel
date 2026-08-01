@@ -1,10 +1,10 @@
 import React from 'react';
 
 const cards = [
-  { key: 'organizations', label: 'Organizations', hint: 'White-label tenants' },
+  { key: 'organizations', label: 'Organizations', hint: 'Active organizations' },
   { key: 'counselors', label: 'Counselors', hint: 'With referral codes' },
-  { key: 'students', label: 'Students', hint: 'Across all orgs' },
-  { key: 'unassigned', label: 'Unassigned', hint: 'Admin-only visibility' },
+  { key: 'students', label: 'Students', hint: 'Across all organizations' },
+  { key: 'unassigned', label: 'Unassigned', hint: 'Awaiting counselor assignment' },
 ];
 
 export function StatCards({ stats }) {
@@ -58,7 +58,7 @@ export function AnalyticsPanel({ stats }) {
           <div className="mt-2 text-[24px] font-semibold tabular-nums text-amber-700">
             {stats.unassignedStudents}
           </div>
-          <p className="mt-1 text-[12px] text-neutral-500">Visible only to white-label admins</p>
+          <p className="mt-1 text-[12px] text-neutral-500">Need counselor assignment</p>
         </div>
       </div>
 
@@ -66,9 +66,9 @@ export function AnalyticsPanel({ stats }) {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <div className="text-[14px] font-semibold text-neutral-900">Monthly student signups</div>
-            <p className="mt-0.5 text-[12px] text-neutral-500">Placeholder chart — backend will supply real data</p>
+            <p className="mt-0.5 text-[12px] text-neutral-500">Trend over recent months</p>
           </div>
-          <span className="chip-muted">Last 6 months</span>
+          <span className="chip-muted">6 months</span>
         </div>
         <div className="flex h-40 items-end gap-2">
           {stats.monthlySignups.map((value, idx) => (

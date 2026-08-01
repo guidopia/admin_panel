@@ -56,7 +56,7 @@ export function AssignCounselorModal({ open, onClose, student, counselors, onSub
               Current counselor: <span className="font-medium text-neutral-800">{currentName}</span>
             </div>
           ) : (
-            <div className="mt-2 text-amber-700">Currently unassigned — visible only to white-label admin.</div>
+            <div className="mt-2 text-amber-700">Currently unassigned.</div>
           )}
         </div>
 

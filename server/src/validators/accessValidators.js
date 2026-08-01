@@ -36,6 +36,7 @@ export const updateAdminSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).max(128).optional(),
   status: z.enum([ENTITY_STATUS.ACTIVE, ENTITY_STATUS.INACTIVE]).optional(),
+  organizationId: objectId.optional(),
 });
 
 export const createCounselorSchema = z.object({

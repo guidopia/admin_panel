@@ -285,8 +285,7 @@ export function UsersPage() {
               <span className="chip-muted">{activePlatformLabel}</span>
             </div>
             <p className="mt-1 text-[13px] text-neutral-500">
-              Choose a database above, then manage users, premium access, and exports for that
-              product.
+              Select a product above to manage users, premium access, and exports.
             </p>
           </div>
         </div>
