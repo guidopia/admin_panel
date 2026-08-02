@@ -16,7 +16,8 @@ Architecture + env matrix: [INTEGRATION.md](./INTEGRATION.md).
 cd server
 npm install
 npm run seed:super-admin
-npm run seed:vidhyasaarthi   # optional: Vidhyasaarthi org + starter counselor
+# Create organizations / counselors / admins in the Access Control UI
+npm run seed:default-org   # optional: org id for students who skip referral
 npm run dev
 ```
 
