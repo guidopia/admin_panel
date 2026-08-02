@@ -33,6 +33,7 @@ import {
 import {
   DeactivateOrganizationModal,
   DeleteCounselorModal,
+  DeleteOrganizationModal,
   EditCounselorModal,
   OrganizationFormModal,
 } from '../ui/FormModals.jsx';
@@ -156,6 +157,7 @@ export function AccessControlPage() {
   const [deleteCounselor, setDeleteCounselor] = useState(null);
   const [regenerateCounselor, setRegenerateCounselor] = useState(null);
   const [toggleOrg, setToggleOrg] = useState(null);
+  const [deleteOrg, setDeleteOrg] = useState(null);
 
   useEffect(() => {
     setActiveTab(initialTabForRole(accessRole));
@@ -233,11 +235,31 @@ export function AccessControlPage() {
     }
   }, [isSuper, isWL]);
 
-  const refreshQuiet = useCallback(() => load({ silent: true, withAnalytics: false }), [load]);
-
   useEffect(() => {
     load({ silent: false, withAnalytics: true });
   }, [load]);
+
+  const bumpOrgCount = useCallback((orgId, field, delta) => {
+    if (!orgId || !delta) return;
+    setOrganizations((prev) =>
+      prev.map((o) =>
+        o.id === orgId
+          ? { ...o, [field]: Math.max(0, (Number(o[field]) || 0) + delta) }
+          : o
+      )
+    );
+  }, []);
+
+  const bumpCounselorStudentCount = useCallback((counselorIdValue, delta) => {
+    if (!counselorIdValue || !delta) return;
+    setCounselors((prev) =>
+      prev.map((c) =>
+        c.id === counselorIdValue
+          ? { ...c, studentCount: Math.max(0, (Number(c.studentCount) || 0) + delta) }
+          : c
+      )
+    );
+  }, []);
 
   const currentOrganization = useMemo(() => {
     if (isSuper) return organizations.find((o) => o.id === organizationId) || null;
@@ -281,29 +303,44 @@ export function AccessControlPage() {
           email: form.email,
           phone: form.phone,
         });
+        setAddCounselorOpen(false);
         setCreatedCounselor({ ...res.counselor, temporaryPassword: res.temporaryPassword });
-        if (res.counselor) setCounselors((prev) => [res.counselor, ...prev]);
-        refreshQuiet();
+        if (res.counselor) {
+          setCounselors((prev) => [res.counselor, ...prev]);
+          bumpOrgCount(res.counselor.organizationId, 'counselorCount', 1);
+          setAnalytics((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  totalCounselors: (prev.totalCounselors || 0) + 1,
+                }
+              : prev
+          );
+        }
+        toast.success('Counselor created');
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [organizationId, refreshQuiet]
+    [organizationId, bumpOrgCount]
   );
 
   const handleAddAdmin = useCallback(
     async (form) => {
       try {
         const res = await accessApi.createAdmin(form);
+        setAddAdminOpen(false);
         setCreatedAdmin({ ...res.admin, temporaryPassword: res.temporaryPassword });
-        if (res.admin) setAdmins((prev) => [res.admin, ...prev]);
+        if (res.admin) {
+          setAdmins((prev) => [res.admin, ...prev]);
+          bumpOrgCount(res.admin.organizationId, 'adminCount', 1);
+        }
         toast.success('Admin created');
-        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [refreshQuiet]
+    [bumpOrgCount]
   );
 
   const handleEditAdmin = useCallback(async (id, form) => {
@@ -323,28 +360,26 @@ export function AccessControlPage() {
         await accessApi.deleteAdmin(admin.id);
         setDeleteAdmin(null);
         setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+        bumpOrgCount(admin.organizationId, 'adminCount', -1);
         toast.success(`${admin.name} deleted`);
-        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [refreshQuiet]
+    [bumpOrgCount]
   );
 
-  const handleEditCounselor = useCallback(
-    async (id, form) => {
-      try {
-        const updated = await accessApi.updateCounselor(id, form);
-        setDetailCounselor((prev) => (prev?.id === id ? updated : prev));
-        setCounselors((prev) => prev.map((c) => (c.id === id ? updated : c)));
-        toast.success('Counselor updated');
-      } catch (err) {
-        toast.error(accessApiError(err));
-      }
-    },
-    []
-  );
+  const handleEditCounselor = useCallback(async (id, form) => {
+    try {
+      const updated = await accessApi.updateCounselor(id, form);
+      setDetailCounselor((prev) => (prev?.id === id ? updated : prev));
+      setCounselors((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      setEditCounselor(null);
+      toast.success('Counselor updated');
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
 
   const handleDeleteCounselor = useCallback(
     async (counselor) => {
@@ -353,44 +388,70 @@ export function AccessControlPage() {
         setDeleteCounselor(null);
         setDetailCounselor(null);
         setCounselors((prev) => prev.filter((c) => c.id !== counselor.id));
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.assignedCounselorId === counselor.id ? { ...s, assignedCounselorId: null } : s
+          )
+        );
+        bumpOrgCount(counselor.organizationId, 'counselorCount', -1);
+        setAnalytics((prev) => {
+          if (!prev) return prev;
+          const freed = Number(counselor.studentCount) || 0;
+          return {
+            ...prev,
+            totalCounselors: Math.max(0, (prev.totalCounselors || 0) - 1),
+            unassignedStudents: (prev.unassignedStudents || 0) + freed,
+          };
+        });
         toast.success(`${counselor.name} deleted · assigned students are now unassigned`);
-        refreshQuiet();
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [refreshQuiet]
+    [bumpOrgCount]
   );
 
-  const handleRegenerateCode = useCallback(
-    async (counselor) => {
-      try {
-        const updated = await accessApi.regenerateReferralCode(counselor.id);
-        setDetailCounselor((prev) => (prev?.id === counselor.id ? updated : prev));
-        setCounselors((prev) => prev.map((c) => (c.id === counselor.id ? updated : c)));
-        setRegenerateCounselor(null);
-        toast.success('Referral code regenerated');
-      } catch (err) {
-        toast.error(accessApiError(err));
-      }
-    },
-    []
-  );
+  const handleRegenerateCode = useCallback(async (counselor) => {
+    try {
+      const updated = await accessApi.regenerateReferralCode(counselor.id);
+      setDetailCounselor((prev) => (prev?.id === counselor.id ? updated : prev));
+      setCounselors((prev) => prev.map((c) => (c.id === counselor.id ? updated : c)));
+      setRegenerateCounselor(null);
+      toast.success('Referral code regenerated');
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
 
   const handleAssignCounselor = useCallback(
     async (studentId, counselorIdValue) => {
       try {
+        const previous = students.find((s) => s.id === studentId);
+        const prevCounselorId = previous?.assignedCounselorId || null;
         const updated = await accessApi.assignStudent(studentId, counselorIdValue);
+        setAssignStudent(null);
         setDetailStudent((prev) => (prev?.id === studentId ? updated : prev));
         setStudents((prev) => prev.map((s) => (s.id === studentId ? updated : s)));
+        if (prevCounselorId !== counselorIdValue) {
+          bumpCounselorStudentCount(prevCounselorId, -1);
+          bumpCounselorStudentCount(counselorIdValue, 1);
+          setAnalytics((prev) => {
+            if (!prev) return prev;
+            let unassigned = prev.unassignedStudents || 0;
+            if (!prevCounselorId && counselorIdValue) unassigned = Math.max(0, unassigned - 1);
+            if (prevCounselorId && !counselorIdValue) unassigned += 1;
+            return { ...prev, unassignedStudents: unassigned };
+          });
+        }
         const name = counselors.find((c) => c.id === counselorIdValue)?.name;
-        toast.success(`Student assigned to ${name || 'counselor'}`);
-        refreshQuiet();
+        toast.success(
+          counselorIdValue ? `Student assigned to ${name || 'counselor'}` : 'Student unassigned'
+        );
       } catch (err) {
         toast.error(accessApiError(err));
       }
     },
-    [counselors, refreshQuiet]
+    [counselors, students, bumpCounselorStudentCount]
   );
 
   const handleAddNote = useCallback(async (studentId, text) => {
@@ -418,6 +479,10 @@ export function AccessControlPage() {
           setOrganizations((prev) =>
             prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
           );
+          setDetailOrganization((prev) =>
+            prev?.id === updated.id ? { ...prev, ...updated } : prev
+          );
+          setOrgForm({ open: false, mode: 'create', organization: null });
           toast.success('Organization updated');
         } else {
           const created = await accessApi.createOrganization({
@@ -427,6 +492,16 @@ export function AccessControlPage() {
             logoUrl: form.logoUrl.trim(),
           });
           setOrganizations((prev) => [created, ...prev]);
+          setOrgForm({ open: false, mode: 'create', organization: null });
+          setAnalytics((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  totalOrganizations: (prev.totalOrganizations || 0) + 1,
+                  activeOrganizations: (prev.activeOrganizations || 0) + 1,
+                }
+              : prev
+          );
           toast.success('Organization created');
         }
       } catch (err) {
@@ -443,9 +518,52 @@ export function AccessControlPage() {
       setOrganizations((prev) =>
         prev.map((o) => (o.id === organization.id ? { ...o, status: nextStatus } : o))
       );
+      setDetailOrganization((prev) =>
+        prev?.id === organization.id ? { ...prev, status: nextStatus } : prev
+      );
       setToggleOrg(null);
-      setDetailOrganization(null);
+      setAnalytics((prev) => {
+        if (!prev) return prev;
+        const wasActive = organization.status === 'active';
+        return {
+          ...prev,
+          activeOrganizations: Math.max(
+            0,
+            (prev.activeOrganizations || 0) + (wasActive ? -1 : 1)
+          ),
+        };
+      });
       toast.success(`Organization ${organization.status === 'active' ? 'deactivated' : 'activated'}`);
+    } catch (err) {
+      toast.error(accessApiError(err));
+    }
+  }, []);
+
+  const handleDeleteOrganization = useCallback(async (organization) => {
+    try {
+      const result = await accessApi.deleteOrganization(organization.id);
+      setDeleteOrg(null);
+      setDetailOrganization(null);
+      setOrganizations((prev) => prev.filter((o) => o.id !== organization.id));
+      setAdmins((prev) => prev.filter((a) => a.organizationId !== organization.id));
+      setCounselors((prev) => prev.filter((c) => c.organizationId !== organization.id));
+      setStudents((prev) => prev.filter((s) => s.organizationId !== organization.id));
+      setAnalytics((prev) => {
+        if (!prev) return prev;
+        const removedCounselors = result?.removed?.counselors ?? organization.counselorCount ?? 0;
+        const removedStudents = result?.removed?.students ?? organization.studentCount ?? 0;
+        return {
+          ...prev,
+          totalOrganizations: Math.max(0, (prev.totalOrganizations || 0) - 1),
+          activeOrganizations:
+            organization.status === 'active'
+              ? Math.max(0, (prev.activeOrganizations || 0) - 1)
+              : prev.activeOrganizations,
+          totalCounselors: Math.max(0, (prev.totalCounselors || 0) - removedCounselors),
+          totalStudents: Math.max(0, (prev.totalStudents || 0) - removedStudents),
+        };
+      });
+      toast.success(`${organization.name} deleted`);
     } catch (err) {
       toast.error(accessApiError(err));
     }
@@ -520,6 +638,7 @@ export function AccessControlPage() {
               onAdd={() => setOrgForm({ open: true, mode: 'create', organization: null })}
               onEdit={(org) => setOrgForm({ open: true, mode: 'edit', organization: org })}
               onToggleStatus={setToggleOrg}
+              onDelete={setDeleteOrg}
               canManage={canManageOrganizations}
             />
           ) : null}
@@ -713,6 +832,13 @@ export function AccessControlPage() {
         onConfirm={handleToggleOrganization}
       />
 
+      <DeleteOrganizationModal
+        open={Boolean(deleteOrg)}
+        onClose={() => setDeleteOrg(null)}
+        organization={deleteOrg}
+        onConfirm={handleDeleteOrganization}
+      />
+
       <AssignCounselorModal
         open={Boolean(assignStudent)}
         onClose={() => setAssignStudent(null)}
@@ -756,6 +882,7 @@ export function AccessControlPage() {
         organization={detailOrganization}
         onEdit={(org) => setOrgForm({ open: true, mode: 'edit', organization: org })}
         onToggleStatus={setToggleOrg}
+        onDelete={setDeleteOrg}
         canManage={canManageOrganizations}
       />
     </div>

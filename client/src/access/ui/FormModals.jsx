@@ -254,3 +254,34 @@ export function DeactivateOrganizationModal({ open, onClose, organization, onCon
     </ModalShell>
   );
 }
+
+export function DeleteOrganizationModal({ open, onClose, organization, onConfirm }) {
+  if (!organization) return null;
+
+  return (
+    <ModalShell
+      open={open}
+      title="Delete organization"
+      description={`Permanently remove ${organization.name} and all of its admins, counselors, referral codes, and students.`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-9 items-center rounded-lg bg-red-600 px-3 text-[12px] font-medium text-white hover:bg-red-700"
+            onClick={() => onConfirm(organization)}
+          >
+            Delete organization
+          </button>
+        </>
+      }
+    >
+      <div className="rounded-xl border border-red-200 bg-red-50/80 px-3 py-2.5 text-[12px] text-red-900">
+        This cannot be undone. Super Admin accounts are not affected.
+      </div>
+    </ModalShell>
+  );
+}

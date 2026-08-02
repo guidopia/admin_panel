@@ -64,6 +64,11 @@ router.patch(
   requireSuperAdmin,
   organizationController.toggleOrganizationStatus
 );
+router.delete(
+  '/organizations/:id',
+  requireSuperAdmin,
+  organizationController.deleteOrganization
+);
 
 // ── White-label Admins (Super Admin create/list; org admin can list own) ─
 router.get(

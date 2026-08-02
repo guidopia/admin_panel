@@ -2,6 +2,7 @@ import { ACCESS_ROLES, ENTITY_STATUS } from '../constants/roles.js';
 import { AccessUser } from '../models/AccessUser.js';
 import { Counselor } from '../models/Counselor.js';
 import { Organization } from '../models/Organization.js';
+import { ReferralCode } from '../models/ReferralCode.js';
 import { Student } from '../models/Student.js';
 import { ApiError } from '../utils/apiError.js';
 import { serializeOrganization } from '../utils/serializers.js';
@@ -114,6 +115,40 @@ export async function toggleOrganizationStatus(id) {
     counselorCount: undefined,
     studentCount: undefined,
   });
+}
+
+/**
+ * Hard-delete an organization and all related Access Control data.
+ * Super Admin only (enforced at route). Super Admin accounts are never deleted.
+ */
+export async function deleteOrganization(id) {
+  const org = await Organization.findById(id);
+  if (!org) throw new ApiError(404, 'Organization not found');
+
+  const orgId = org._id;
+
+  const [students, counselors, accessUsers, referralCodes] = await Promise.all([
+    Student.deleteMany({ organizationId: orgId }),
+    Counselor.deleteMany({ organizationId: orgId }),
+    AccessUser.deleteMany({
+      organizationId: orgId,
+      accessRole: { $ne: ACCESS_ROLES.SUPER_ADMIN },
+    }),
+    ReferralCode.deleteMany({ organizationId: orgId }),
+  ]);
+
+  await Organization.findByIdAndDelete(orgId);
+
+  return {
+    id: String(orgId),
+    deleted: true,
+    removed: {
+      students: students.deletedCount || 0,
+      counselors: counselors.deletedCount || 0,
+      accessUsers: accessUsers.deletedCount || 0,
+      referralCodes: referralCodes.deletedCount || 0,
+    },
+  };
 }
 
 export { ACCESS_ROLES };

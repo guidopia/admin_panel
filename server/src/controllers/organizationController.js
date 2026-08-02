@@ -41,3 +41,8 @@ export const toggleOrganizationStatus = asyncHandler(async (req, res) => {
   const organization = await organizationService.toggleOrganizationStatus(req.params.id);
   res.json({ organization });
 });
+
+export const deleteOrganization = asyncHandler(async (req, res) => {
+  const result = await organizationService.deleteOrganization(req.params.id);
+  res.json(result);
+});

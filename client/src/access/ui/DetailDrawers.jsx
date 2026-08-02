@@ -364,7 +364,15 @@ export function CounselorDetailDrawer({
   );
 }
 
-export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, onToggleStatus, canManage = true }) {
+export function OrganizationDetailDrawer({
+  open,
+  onClose,
+  organization,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  canManage = true,
+}) {
   if (!organization) return null;
 
   return (
@@ -388,6 +396,15 @@ export function OrganizationDetailDrawer({ open, onClose, organization, onEdit, 
             <button type="button" className="btn-ghost h-9 px-3 text-[12px]" onClick={() => onToggleStatus(organization)}>
               {organization.status === 'active' ? 'Deactivate' : 'Activate'}
             </button>
+            {onDelete ? (
+              <button
+                type="button"
+                className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-white px-3 text-[12px] font-medium text-red-700 hover:bg-red-50"
+                onClick={() => onDelete(organization)}
+              >
+                Delete organization
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

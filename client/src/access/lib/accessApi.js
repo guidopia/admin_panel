@@ -39,6 +39,9 @@ export const accessApi = {
   toggleOrganizationStatus(id) {
     return api.patch(`/api/access/organizations/${id}/status`).then((r) => r.data.organization);
   },
+  deleteOrganization(id) {
+    return api.delete(`/api/access/organizations/${id}`).then((r) => r.data);
+  },
 
   // ── Admins ────────────────────────────────────────────────────────────
   listAdmins(organizationId) {

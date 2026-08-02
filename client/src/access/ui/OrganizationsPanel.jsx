@@ -16,6 +16,7 @@ export function OrganizationsPanel({
   onAdd,
   onEdit,
   onToggleStatus,
+  onDelete,
   canManage = true,
 }) {
   const filtered = useMemo(() => {
@@ -88,6 +89,15 @@ export function OrganizationsPanel({
                             <button type="button" className="btn-ghost h-8 px-2.5 text-[12px]" onClick={() => onToggleStatus(org)}>
                               {org.status === 'active' ? 'Deactivate' : 'Activate'}
                             </button>
+                            {onDelete ? (
+                              <button
+                                type="button"
+                                className="inline-flex h-8 items-center rounded-lg border border-red-200 px-2.5 text-[12px] font-medium text-red-700 hover:bg-red-50"
+                                onClick={() => onDelete(org)}
+                              >
+                                Delete
+                              </button>
+                            ) : null}
                           </>
                         ) : null}
                       </div>

@@ -101,7 +101,7 @@ JWT includes `typ: "access"` and is separate from Prodigy `/api/auth/login`.
 
 | Area | Notes |
 |------|-------|
-| Organizations | Super Admin CRUD + status toggle |
+| Organizations | Super Admin CRUD + status toggle + hard delete (cascades admins/counselors/students/codes) |
 | Admins | Super creates WL admins for an org |
 | Counselors | Super + Org Admin; **referral code auto-generated** on create |
 | Students | List/assign/notes; counselors see assigned only |

@@ -15,7 +15,9 @@
     "migrate:referral-codes": "node scripts/migrateReferralCodes.js",
     "test": "node --test src/**/*.test.js",
     "test:referral": "node --test src/utils/referralCode.test.js",
-    "verify:phase4": "node scripts/phase4VerifyReferral.js"
+    "verify:phase4": "node scripts/phase4VerifyReferral.js",
+    "cleanup:access-demo": "node scripts/cleanupAccessDemo.js",
+    "list:access-data": "node scripts/listAccessData.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
