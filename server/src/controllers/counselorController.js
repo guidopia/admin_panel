@@ -1,5 +1,8 @@
 import { ACCESS_ROLES } from '../constants/roles.js';
-import { assertOrgAccess, resolveOrganizationScope } from '../middleware/accessAuthMiddleware.js';
+import {
+  assertOrgAccess,
+  resolveCreateOrganizationId,
+} from '../middleware/accessAuthMiddleware.js';
 import * as counselorService from '../services/counselorService.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -48,13 +51,7 @@ export const getCounselor = asyncHandler(async (req, res) => {
 
 export const createCounselor = asyncHandler(async (req, res) => {
   const payload = parseOrThrow(createCounselorSchema, req.body, ApiError);
-
-  const organizationId =
-    req.accessUser.accessRole === ACCESS_ROLES.SUPER_ADMIN
-      ? payload.organizationId || resolveOrganizationScope(req, { required: true })
-      : req.accessUser.organizationId;
-
-  if (!organizationId) throw new ApiError(400, 'organizationId is required');
+  const organizationId = resolveCreateOrganizationId(req, payload.organizationId);
 
   const result = await counselorService.createCounselor({
     ...payload,

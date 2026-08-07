@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ModalShell } from './primitives.jsx';
 
 export function AddCounselorModal({ open, onClose, organizations, onSubmit, hideOrganizationSelect = false }) {
   const [form, setForm] = useState({
-    organizationId: organizations[0]?.id || '',
+    organizationId: '',
     name: '',
     email: '',
     phone: '',
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      organizationId: organizations[0]?.id || '',
+      name: '',
+      email: '',
+      phone: '',
+    });
+  }, [open, organizations]);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -16,17 +26,16 @@ export function AddCounselorModal({ open, onClose, organizations, onSubmit, hide
 
   function handleSubmit(e) {
     e.preventDefault();
+    const organizationId = form.organizationId || organizations[0]?.id || '';
+    if (!organizationId) {
+      toast.error(hideOrganizationSelect ? 'Organization is not available' : 'Select an organization');
+      return;
+    }
     if (!form.name.trim() || !form.email.trim()) {
       toast.error('Name and email are required');
       return;
     }
-    onSubmit(form);
-    setForm({
-      organizationId: organizations[0]?.id || '',
-      name: '',
-      email: '',
-      phone: '',
-    });
+    onSubmit({ ...form, organizationId });
     onClose();
   }
 
@@ -60,11 +69,15 @@ export function AddCounselorModal({ open, onClose, organizations, onSubmit, hide
               value={form.organizationId}
               onChange={(e) => update('organizationId', e.target.value)}
             >
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
+              {organizations.length ? (
+                organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))
+              ) : (
+                <option value="">No organizations — create one first</option>
+              )}
             </select>
           )}
         </div>

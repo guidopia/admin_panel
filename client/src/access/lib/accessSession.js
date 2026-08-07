@@ -34,3 +34,30 @@ export function accessRoleLabel(role) {
   if (role === ROLES.COUNSELOR) return 'Counselor';
   return role || 'User';
 }
+
+/**
+ * Resolve organizationId for create flows (counselor, etc.).
+ * Prefers explicit form selection, then session org, then loaded org context.
+ */
+export function resolveCreateOrganizationId({
+  user,
+  organizations = [],
+  formOrganizationId,
+  currentOrganization,
+}) {
+  const fromForm = String(formOrganizationId || '').trim();
+  const fromUser = getAccessOrganizationId(user);
+  const fromCurrent = currentOrganization?.id ? String(currentOrganization.id) : '';
+  const fromSingle = organizations.length === 1 ? String(organizations[0]?.id || '') : '';
+  const fromFirst = organizations[0]?.id ? String(organizations[0].id) : '';
+
+  if (isOrgAdmin(user)) {
+    return fromUser || fromCurrent || fromSingle || fromForm;
+  }
+
+  if (isSuperAdmin(user)) {
+    return fromForm || fromSingle || fromFirst;
+  }
+
+  return fromForm || fromUser || fromCurrent;
+}

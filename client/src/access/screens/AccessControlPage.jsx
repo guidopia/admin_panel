@@ -10,6 +10,7 @@ import {
   isCounselor,
   isOrgAdmin,
   isSuperAdmin,
+  resolveCreateOrganizationId,
 } from '../lib/accessSession.js';
 import { ROLES, orgName } from '../lib/accessConstants.js';
 import { accessApi, accessApiError } from '../lib/accessApi.js';
@@ -297,8 +298,18 @@ export function AccessControlPage() {
   const handleAddCounselor = useCallback(
     async (form) => {
       try {
+        const resolvedOrganizationId = resolveCreateOrganizationId({
+          user,
+          organizations,
+          formOrganizationId: form.organizationId,
+          currentOrganization,
+        });
+        if (!resolvedOrganizationId) {
+          toast.error('Organization is required');
+          return;
+        }
         const res = await accessApi.createCounselor({
-          organizationId: form.organizationId || organizationId || undefined,
+          organizationId: resolvedOrganizationId,
           name: form.name,
           email: form.email,
           phone: form.phone,
@@ -322,7 +333,7 @@ export function AccessControlPage() {
         toast.error(accessApiError(err));
       }
     },
-    [organizationId, bumpOrgCount]
+    [user, organizations, currentOrganization, bumpOrgCount]
   );
 
   const handleAddAdmin = useCallback(
@@ -753,9 +764,7 @@ export function AccessControlPage() {
       <AddCounselorModal
         open={addCounselorOpen}
         onClose={() => setAddCounselorOpen(false)}
-        organizations={
-          isSuper ? organizations : organizations.filter((o) => o.id === organizationId)
-        }
+        organizations={organizations}
         onSubmit={handleAddCounselor}
         hideOrganizationSelect={!isSuper}
       />

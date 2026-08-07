@@ -102,6 +102,41 @@ export function resolveOrganizationScope(req, { required = false } = {}) {
 }
 
 /**
+ * Resolve organizationId for resource creation (counselors, etc.).
+ * Super Admin must supply organizationId in the body.
+ * Org Admin is scoped to their organization; body org must match when both are present.
+ */
+export function resolveCreateOrganizationId(req, payloadOrganizationId) {
+  const user = req.accessUser;
+  if (!user) throw new ApiError(401, 'Unauthorized');
+
+  const payloadOrgId = payloadOrganizationId ? String(payloadOrganizationId).trim() : '';
+
+  if (user.accessRole === ACCESS_ROLES.SUPER_ADMIN) {
+    const orgId =
+      payloadOrgId ||
+      req.body?.organizationId ||
+      req.query?.organizationId ||
+      req.params?.organizationId ||
+      null;
+    if (!orgId) throw new ApiError(400, 'Organization ID is required');
+    return String(orgId);
+  }
+
+  if (user.accessRole === ACCESS_ROLES.WL_ADMIN) {
+    const userOrgId = user.organizationId ? String(user.organizationId) : '';
+    if (userOrgId && payloadOrgId && userOrgId !== payloadOrgId) {
+      throw new ApiError(403, 'Access denied to this organization');
+    }
+    const orgId = userOrgId || payloadOrgId;
+    if (!orgId) throw new ApiError(400, 'Organization ID is required');
+    return orgId;
+  }
+
+  throw new ApiError(403, 'Insufficient permissions');
+}
+
+/**
  * Ensure a resource's organizationId is visible to the caller.
  */
 export function assertOrgAccess(accessUser, organizationId) {
