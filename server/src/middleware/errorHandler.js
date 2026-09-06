@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ApiError } from '../utils/apiError.js';
 
 const isProd = () => process.env.NODE_ENV === 'production';
 
@@ -37,10 +38,12 @@ export function errorHandler(err, req, res, _next) {
     );
   }
 
+  const isExplicitError = err instanceof ApiError || statusCode === 503;
   const payload = {
-    // Never leak internal error details for unexpected 5xx in production.
+    // Never leak internal error details for unexpected 5xx in production,
+    // but preserve intentional operational messages (ApiError or 503 db hints).
     message:
-      statusCode >= 500 && isProd() ? 'Server error' : err.message || 'Server error',
+      statusCode >= 500 && isProd() && !isExplicitError ? 'Server error' : err.message || 'Server error',
   };
 
   if (err.details) payload.details = err.details;

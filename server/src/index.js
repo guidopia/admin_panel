@@ -101,10 +101,15 @@ async function initPlatform() {
 
   const careerBeaconUri = (process.env.MONGODB_URI_CAREER_BEACON || '').trim();
   if (careerBeaconUri) {
-    const careerConn = await connectCareerBeacon(careerBeaconUri);
-    initCareerBeaconModels(careerConn);
-    // eslint-disable-next-line no-console
-    console.log('Career Beacon database connected');
+    try {
+      const careerConn = await connectCareerBeacon(careerBeaconUri);
+      initCareerBeaconModels(careerConn);
+      // eslint-disable-next-line no-console
+      console.log('Career Beacon database connected');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('Career Beacon database failed to connect (tab disabled):', err?.message || err);
+    }
   } else {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_CAREER_BEACON not set — Career Beacon tab disabled');
@@ -112,10 +117,15 @@ async function initPlatform() {
 
   const vidhyasaarthiUri = getVidhyasaarthiUriFromEnv();
   if (vidhyasaarthiUri) {
-    const vidhyaConn = await connectVidhyasaarthi(vidhyasaarthiUri);
-    initVidhyasaarthiModels(vidhyaConn);
-    // eslint-disable-next-line no-console
-    console.log('Vidhyasaarthi database connected');
+    try {
+      const vidhyaConn = await connectVidhyasaarthi(vidhyasaarthiUri);
+      initVidhyasaarthiModels(vidhyaConn);
+      // eslint-disable-next-line no-console
+      console.log('Vidhyasaarthi database connected');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('Vidhyasaarthi database failed to connect (tab disabled):', err?.message || err);
+    }
   } else {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled');
@@ -123,10 +133,15 @@ async function initPlatform() {
 
   const clickToCollegeUri = getClickToCollegeUriFromEnv();
   if (clickToCollegeUri) {
-    const clickConn = await connectClickToCollege(clickToCollegeUri);
-    initClickToCollegeModels(clickConn);
-    // eslint-disable-next-line no-console
-    console.log('Click To College database connected');
+    try {
+      const clickConn = await connectClickToCollege(clickToCollegeUri);
+      initClickToCollegeModels(clickConn);
+      // eslint-disable-next-line no-console
+      console.log('Click To College database connected');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('Click To College database failed to connect (tab disabled):', err?.message || err);
+    }
   } else {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_CLICKTOCOLLEGE not set — Click To College tab disabled');

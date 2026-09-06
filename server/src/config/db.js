@@ -108,16 +108,30 @@ export async function connectCareerBeacon(mongoUri) {
 
   if (careerBeaconConnection) {
     if (careerBeaconConnection.readyState === 1) return careerBeaconConnection;
-    await careerBeaconConnection.asPromise();
-    return careerBeaconConnection;
+    try {
+      await careerBeaconConnection.asPromise();
+      return careerBeaconConnection;
+    } catch (err) {
+      careerBeaconConnection = null;
+      const e = new Error(atlasWhitelistHint(err));
+      e.statusCode = 503;
+      throw e;
+    }
   }
 
-  careerBeaconConnection = mongoose.createConnection(mongoUri.trim(), {
-    autoIndex: false,
-  });
-
-  await careerBeaconConnection.asPromise();
-  return careerBeaconConnection;
+  try {
+    careerBeaconConnection = mongoose.createConnection(mongoUri.trim(), {
+      autoIndex: false,
+      serverSelectionTimeoutMS: 12000,
+    });
+    await careerBeaconConnection.asPromise();
+    return careerBeaconConnection;
+  } catch (err) {
+    careerBeaconConnection = null;
+    const e = new Error(atlasWhitelistHint(err));
+    e.statusCode = 503;
+    throw e;
+  }
 }
 
 export async function connectVidhyasaarthi(mongoUri) {
@@ -125,16 +139,30 @@ export async function connectVidhyasaarthi(mongoUri) {
 
   if (vidhyasaarthiConnection) {
     if (vidhyasaarthiConnection.readyState === 1) return vidhyasaarthiConnection;
-    await vidhyasaarthiConnection.asPromise();
-    return vidhyasaarthiConnection;
+    try {
+      await vidhyasaarthiConnection.asPromise();
+      return vidhyasaarthiConnection;
+    } catch (err) {
+      vidhyasaarthiConnection = null;
+      const e = new Error(atlasWhitelistHint(err));
+      e.statusCode = 503;
+      throw e;
+    }
   }
 
-  vidhyasaarthiConnection = mongoose.createConnection(mongoUri.trim(), {
-    autoIndex: false,
-  });
-
-  await vidhyasaarthiConnection.asPromise();
-  return vidhyasaarthiConnection;
+  try {
+    vidhyasaarthiConnection = mongoose.createConnection(mongoUri.trim(), {
+      autoIndex: false,
+      serverSelectionTimeoutMS: 12000,
+    });
+    await vidhyasaarthiConnection.asPromise();
+    return vidhyasaarthiConnection;
+  } catch (err) {
+    vidhyasaarthiConnection = null;
+    const e = new Error(atlasWhitelistHint(err));
+    e.statusCode = 503;
+    throw e;
+  }
 }
 
 /** Prefer MONGODB_URI_VIDHYASAARTHI; also accept MONGODB_URI_VIDHYASARTHI. */
@@ -150,16 +178,30 @@ export async function connectClickToCollege(mongoUri) {
 
   if (clickToCollegeConnection) {
     if (clickToCollegeConnection.readyState === 1) return clickToCollegeConnection;
-    await clickToCollegeConnection.asPromise();
-    return clickToCollegeConnection;
+    try {
+      await clickToCollegeConnection.asPromise();
+      return clickToCollegeConnection;
+    } catch (err) {
+      clickToCollegeConnection = null;
+      const e = new Error(atlasWhitelistHint(err));
+      e.statusCode = 503;
+      throw e;
+    }
   }
 
-  clickToCollegeConnection = mongoose.createConnection(mongoUri.trim(), {
-    autoIndex: false,
-  });
-
-  await clickToCollegeConnection.asPromise();
-  return clickToCollegeConnection;
+  try {
+    clickToCollegeConnection = mongoose.createConnection(mongoUri.trim(), {
+      autoIndex: false,
+      serverSelectionTimeoutMS: 12000,
+    });
+    await clickToCollegeConnection.asPromise();
+    return clickToCollegeConnection;
+  } catch (err) {
+    clickToCollegeConnection = null;
+    const e = new Error(atlasWhitelistHint(err));
+    e.statusCode = 503;
+    throw e;
+  }
 }
 
 /** Prefer MONGODB_URI_CLICKTOCOLLEGE; also accept MONGODB_URI_CLICK_TO_COLLEGE. */
