@@ -9,6 +9,7 @@ import {
   getModelsForPlatform,
   isCareerBeaconConfigured,
   isVidhyasaarthiConfigured,
+  isClickToCollegeConfigured,
 } from '../db/platformModels.js';
 
 export function resolveRequestPlatform(req) {
@@ -35,7 +36,9 @@ export function listPlatforms(_req, res) {
     platforms: listPlatformMeta({
       careerBeaconConfigured: isCareerBeaconConfigured(),
       vidhyasaarthiConfigured: isVidhyasaarthiConfigured(),
+      clickToCollegeConfigured: isClickToCollegeConfigured(),
     }),
     defaultPlatform: DEFAULT_PLATFORM,
   });
 }
+

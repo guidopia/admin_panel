@@ -33,6 +33,7 @@ export async function connectDB(mongoUri) {
 let adminConnection = null;
 let careerBeaconConnection = null;
 let vidhyasaarthiConnection = null;
+let clickToCollegeConnection = null;
 
 /**
  * Access Control / admin-panel DB — organizations, access_users, counselors, referral codes.
@@ -143,3 +144,29 @@ export function getVidhyasaarthiUriFromEnv() {
     (process.env.MONGODB_URI_VIDHYASARTHI || '').trim()
   );
 }
+
+export async function connectClickToCollege(mongoUri) {
+  if (!mongoUri?.trim()) return null;
+
+  if (clickToCollegeConnection) {
+    if (clickToCollegeConnection.readyState === 1) return clickToCollegeConnection;
+    await clickToCollegeConnection.asPromise();
+    return clickToCollegeConnection;
+  }
+
+  clickToCollegeConnection = mongoose.createConnection(mongoUri.trim(), {
+    autoIndex: false,
+  });
+
+  await clickToCollegeConnection.asPromise();
+  return clickToCollegeConnection;
+}
+
+/** Prefer MONGODB_URI_CLICKTOCOLLEGE; also accept MONGODB_URI_CLICK_TO_COLLEGE. */
+export function getClickToCollegeUriFromEnv() {
+  return (
+    (process.env.MONGODB_URI_CLICKTOCOLLEGE || '').trim() ||
+    (process.env.MONGODB_URI_CLICK_TO_COLLEGE || '').trim()
+  );
+}
+

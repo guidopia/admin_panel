@@ -8,6 +8,7 @@ import { ApiError } from '../utils/apiError.js';
 
 let careerBeaconModels = null;
 let vidhyasaarthiModels = null;
+let clickToCollegeModels = null;
 
 function bindModels(connection) {
   const UserModel =
@@ -37,12 +38,21 @@ export function initVidhyasaarthiModels(connection) {
   return vidhyasaarthiModels;
 }
 
+export function initClickToCollegeModels(connection) {
+  clickToCollegeModels = bindModels(connection);
+  return clickToCollegeModels;
+}
+
 export function isCareerBeaconConfigured() {
   return Boolean(careerBeaconModels);
 }
 
 export function isVidhyasaarthiConfigured() {
   return Boolean(vidhyasaarthiModels);
+}
+
+export function isClickToCollegeConfigured() {
+  return Boolean(clickToCollegeModels);
 }
 
 export function getModelsForPlatform(platform) {
@@ -60,6 +70,13 @@ export function getModelsForPlatform(platform) {
     return vidhyasaarthiModels;
   }
 
+  if (platform === PLATFORMS.CLICKTOCOLLEGE) {
+    if (!clickToCollegeModels) {
+      throw new ApiError(503, 'Click To College database is not configured');
+    }
+    return clickToCollegeModels;
+  }
+
   return {
     User,
     Onboarding,
@@ -67,3 +84,4 @@ export function getModelsForPlatform(platform) {
     db: mongoose.connection.db,
   };
 }
+

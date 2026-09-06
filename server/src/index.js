@@ -8,12 +8,18 @@ import morgan from 'morgan';
 import {
   connectAdmin,
   connectCareerBeacon,
+  connectClickToCollege,
   connectDB,
   connectVidhyasaarthi,
   getAdminUriFromEnv,
+  getClickToCollegeUriFromEnv,
   getVidhyasaarthiUriFromEnv,
 } from './config/db.js';
-import { initCareerBeaconModels, initVidhyasaarthiModels } from './db/platformModels.js';
+import {
+  initCareerBeaconModels,
+  initClickToCollegeModels,
+  initVidhyasaarthiModels,
+} from './db/platformModels.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -114,7 +120,19 @@ async function initPlatform() {
     // eslint-disable-next-line no-console
     console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled');
   }
+
+  const clickToCollegeUri = getClickToCollegeUriFromEnv();
+  if (clickToCollegeUri) {
+    const clickConn = await connectClickToCollege(clickToCollegeUri);
+    initClickToCollegeModels(clickConn);
+    // eslint-disable-next-line no-console
+    console.log('Click To College database connected');
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn('MONGODB_URI_CLICKTOCOLLEGE not set — Click To College tab disabled');
+  }
 }
+
 
 function ensureReady() {
   if (!initPromise) {

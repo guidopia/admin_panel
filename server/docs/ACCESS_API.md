@@ -27,7 +27,9 @@ npm run dev
 |----------|---------|
 | `MONGODB_URI` | Prodigy users (Users tab / `/api/auth/login`) |
 | `MONGODB_ADMIN` | Access Control DB (orgs, counselors, referral codes, access students) |
+| `MONGODB_URI_CAREER_BEACON` | Career Beacon platform users (Users tab only) |
 | `MONGODB_URI_VIDHYASAARTHI` | Vidhyasaarthi platform users (Users tab only) |
+| `MONGODB_URI_CLICKTOCOLLEGE` | Click To College platform users (Users tab only) |
 | `INTERNAL_REGISTER_KEY` | Shared secret with student website; **required in production** |
 | `DEFAULT_ORGANIZATION_ID` | Org for students who skip / have invalid referral |
 | `JWT_SECRET` | Signs Access + Prodigy JWTs |
