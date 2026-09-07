@@ -27,8 +27,10 @@ function toISODateString(d) {
 
 export function UsersPage() {
   const [platform, setPlatform] = useState(DEFAULT_PLATFORM);
+  // Optimistic: all platforms start as configured so tabs are clickable immediately.
+  // The /api/users/platforms fetch below updates configured=false for any that aren't set up.
   const [platformOptions, setPlatformOptions] = useState(
-    PLATFORMS.map((p) => ({ ...p, configured: p.id === DEFAULT_PLATFORM }))
+    PLATFORMS.map((p) => ({ ...p, configured: true }))
   );
 
   const [query, setQuery] = useState('');

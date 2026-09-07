@@ -74,19 +74,22 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) app.use(morgan('dev'
 let initPromise = null;
 
 async function initPlatform() {
-  // Prodigy AI — main Users admin (/login, /api/users)
-  await connectDB(process.env.MONGODB_URI);
-  // eslint-disable-next-line no-console
-  console.log('Prodigy database connected (MONGODB_URI)');
-
-  // Access Control — orgs, admins, counselors, referral codes (/login/access, /api/access)
+  // Connect the two required databases in parallel — they are independent.
   const adminUri = getAdminUriFromEnv();
   if (!adminUri) {
     throw new Error('Missing MONGODB_ADMIN — Access Control database is required');
   }
-  await connectAdmin(adminUri);
-  // eslint-disable-next-line no-console
-  console.log('Admin Access Control database connected (MONGODB_ADMIN)');
+
+  await Promise.all([
+    connectDB(process.env.MONGODB_URI).then(() => {
+      // eslint-disable-next-line no-console
+      console.log('Prodigy database connected (MONGODB_URI)');
+    }),
+    connectAdmin(adminUri).then(() => {
+      // eslint-disable-next-line no-console
+      console.log('Admin Access Control database connected (MONGODB_ADMIN)');
+    }),
+  ]);
 
   // syncIndexes is slow against Atlas — only run in local/dev, not every serverless cold start.
   if (!process.env.VERCEL) {
@@ -99,53 +102,58 @@ async function initPlatform() {
     ]);
   }
 
+  // Connect optional platform databases in parallel — all three are independent,
+  // so there is no reason to wait for each one before starting the next.
   const careerBeaconUri = (process.env.MONGODB_URI_CAREER_BEACON || '').trim();
-  if (careerBeaconUri) {
-    try {
-      const careerConn = await connectCareerBeacon(careerBeaconUri);
-      initCareerBeaconModels(careerConn);
-      // eslint-disable-next-line no-console
-      console.log('Career Beacon database connected');
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('Career Beacon database failed to connect (tab disabled):', err?.message || err);
-    }
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn('MONGODB_URI_CAREER_BEACON not set — Career Beacon tab disabled');
-  }
-
   const vidhyasaarthiUri = getVidhyasaarthiUriFromEnv();
-  if (vidhyasaarthiUri) {
-    try {
-      const vidhyaConn = await connectVidhyasaarthi(vidhyasaarthiUri);
-      initVidhyasaarthiModels(vidhyaConn);
-      // eslint-disable-next-line no-console
-      console.log('Vidhyasaarthi database connected');
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('Vidhyasaarthi database failed to connect (tab disabled):', err?.message || err);
-    }
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled');
-  }
-
   const clickToCollegeUri = getClickToCollegeUriFromEnv();
-  if (clickToCollegeUri) {
-    try {
-      const clickConn = await connectClickToCollege(clickToCollegeUri);
-      initClickToCollegeModels(clickConn);
-      // eslint-disable-next-line no-console
-      console.log('Click To College database connected');
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('Click To College database failed to connect (tab disabled):', err?.message || err);
-    }
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn('MONGODB_URI_CLICKTOCOLLEGE not set — Click To College tab disabled');
-  }
+
+  await Promise.allSettled([
+    // Career Beacon
+    careerBeaconUri
+      ? connectCareerBeacon(careerBeaconUri)
+          .then((conn) => {
+            initCareerBeaconModels(conn);
+            // eslint-disable-next-line no-console
+            console.log('Career Beacon database connected');
+          })
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('Career Beacon database failed to connect (tab disabled):', err?.message || err);
+          })
+      : // eslint-disable-next-line no-console
+        Promise.resolve(console.warn('MONGODB_URI_CAREER_BEACON not set — Career Beacon tab disabled')),
+
+    // Vidhyasaarthi
+    vidhyasaarthiUri
+      ? connectVidhyasaarthi(vidhyasaarthiUri)
+          .then((conn) => {
+            initVidhyasaarthiModels(conn);
+            // eslint-disable-next-line no-console
+            console.log('Vidhyasaarthi database connected');
+          })
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('Vidhyasaarthi database failed to connect (tab disabled):', err?.message || err);
+          })
+      : // eslint-disable-next-line no-console
+        Promise.resolve(console.warn('MONGODB_URI_VIDHYASAARTHI not set — Vidhyasaarthi tab disabled')),
+
+    // Click To College
+    clickToCollegeUri
+      ? connectClickToCollege(clickToCollegeUri)
+          .then((conn) => {
+            initClickToCollegeModels(conn);
+            // eslint-disable-next-line no-console
+            console.log('Click To College database connected');
+          })
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('Click To College database failed to connect (tab disabled):', err?.message || err);
+          })
+      : // eslint-disable-next-line no-console
+        Promise.resolve(console.warn('MONGODB_URI_CLICKTOCOLLEGE not set — Click To College tab disabled')),
+  ]);
 }
 
 
